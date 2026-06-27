@@ -1,0 +1,44 @@
+import { Router } from 'express';
+import authRoutes from '@modules/auth/routes/auth.routes';
+import webhookRoutes from '@modules/auth/routes/webhook.routes';
+import userRoutes from '@modules/users/routes/user.routes';
+import roleRoutes from '@modules/roles/routes/role.routes';
+import permissionRoutes from '@modules/permissions/routes/permission.routes';
+import documentRoutes from '@modules/documents/routes/document.routes';
+import categoryRoutes from '@modules/categories/routes/category.routes';
+import tagRoutes from '@modules/tags/routes/tag.routes';
+import favoriteRoutes from '@modules/favorites/routes/favorite.routes';
+import notificationRoutes from '@modules/notifications/routes/notification.routes';
+import chatRoutes from '@modules/chat/routes/chat.routes';
+import promptRoutes from '@modules/prompts/routes/prompt.routes';
+import aiRoutes from '@modules/ai/routes/ai.routes';
+import uploadRoutes from '@modules/uploads/routes/upload.routes';
+import analyticsRoutes from '@modules/analytics/routes/analytics.routes';
+import dashboardRoutes from '@modules/dashboard/routes/dashboard.routes';
+import settingsRoutes from '@modules/settings/routes/settings.routes';
+import auditLogRoutes from '@modules/audit-logs/routes/audit-log.routes';
+import apiKeyRoutes from '@modules/api-keys/routes/api-key.routes';
+
+const router = Router();
+
+router.use('/auth', authRoutes);
+router.use('/webhooks', webhookRoutes);
+router.use('/users', userRoutes);
+router.use('/roles', roleRoutes);
+router.use('/permissions', permissionRoutes);
+router.use('/documents', documentRoutes);
+router.use('/categories', categoryRoutes);
+router.use('/tags', tagRoutes);
+router.use('/favorites', favoriteRoutes);
+router.use('/notifications', notificationRoutes);
+router.use('/chats', chatRoutes);
+router.use('/prompts', promptRoutes);
+router.use('/ai', aiRoutes);
+router.use('/uploads', uploadRoutes);
+router.use('/analytics', analyticsRoutes);
+router.use('/dashboard', dashboardRoutes);
+router.use('/settings', settingsRoutes);
+router.use('/audit-logs', auditLogRoutes);
+router.use('/api-keys', apiKeyRoutes);
+
+export default router;

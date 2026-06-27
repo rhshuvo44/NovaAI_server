@@ -1,0 +1,84 @@
+services:
+  app:
+    build:
+      context: .
+      target: runtime
+    container_name: ai-workspace-api
+    restart: unless-stopped
+    ports:
+      - '${PORT:-5000}:5000'
+    env_file:
+      - .env
+    environment:
+      MONGODB_URI: mongodb://mongodb:27017/ai-workspace
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ai-workspace-network
+    volumes:
+      - ./logs:/usr/src/app/logs
+
+  mongodb:
+    image: mongo:7
+    container_name: ai-workspace-mongodb
+    restart: unless-stopped
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongodb-data:/data/db
+    healthcheck:
+      test: echo "try { rs.status() } catch (err) { quit(1) }" | mongosh --quiet || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ai-workspace-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ai-workspace-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - ai-workspace-network
+
+  mongo-express:
+    image: mongo-express:1
+    container_name: ai-workspace-mongo-express
+    restart: unless-stopped
+    ports:
+      - '8081:8081'
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongodb:27017/
+      ME_CONFIG_BASICAUTH: false
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - ai-workspace-network
+    profiles:
+      - tools
+
+networks:
+  ai-workspace-network:
+    driver: bridge
+
+volumes:
+  mongodb-data:
+  redis-data:

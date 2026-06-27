@@ -1,0 +1,214 @@
+{
+  "info": {
+    "name": "AI Workspace API",
+    "description": "Enterprise SaaS backend API collection for AI Workspace. Set {{baseUrl}}, {{accessToken}}, and {{refreshToken}} in the active environment.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api/v1" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "clerkSessionToken", "value": "" },
+    { "key": "documentId", "value": "" },
+    { "key": "chatId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Bootstrap Session",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/session",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionToken\": \"{{clerkSessionToken}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Refresh Session",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/refresh",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": { "method": "GET", "url": "{{baseUrl}}/auth/me" }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/auth/logout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        { "name": "List Users", "request": { "method": "GET", "url": "{{baseUrl}}/users?page=1&limit=20" } },
+        { "name": "Get User By Id", "request": { "method": "GET", "url": "{{baseUrl}}/users/:id" } },
+        {
+          "name": "Update Own Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/users/me",
+            "body": { "mode": "raw", "raw": "{\n  \"firstName\": \"Jane\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Documents",
+      "item": [
+        {
+          "name": "Create Document",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/documents",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"My Document\",\n  \"content\": \"Document body text\",\n  \"isPublic\": false\n}"
+            }
+          }
+        },
+        { "name": "List Documents", "request": { "method": "GET", "url": "{{baseUrl}}/documents?page=1&limit=20" } },
+        { "name": "Search Documents", "request": { "method": "GET", "url": "{{baseUrl}}/documents/search?q=keyword" } },
+        { "name": "Get Document", "request": { "method": "GET", "url": "{{baseUrl}}/documents/{{documentId}}" } },
+        {
+          "name": "Update Document",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/documents/{{documentId}}",
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Updated title\"\n}" }
+          }
+        },
+        { "name": "Delete Document", "request": { "method": "DELETE", "url": "{{baseUrl}}/documents/{{documentId}}" } }
+      ]
+    },
+    {
+      "name": "AI",
+      "item": [
+        {
+          "name": "Content Generator",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/ai/content-generator",
+            "body": { "mode": "raw", "raw": "{\n  \"topic\": \"benefits of remote work\",\n  \"tone\": \"professional\",\n  \"length\": \"medium\"\n}" }
+          }
+        },
+        {
+          "name": "Prompt Optimizer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/ai/prompt-optimizer",
+            "body": { "mode": "raw", "raw": "{\n  \"prompt\": \"write something about dogs\"\n}" }
+          }
+        },
+        {
+          "name": "Summarizer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/ai/summarizer",
+            "body": { "mode": "raw", "raw": "{\n  \"text\": \"Long article text goes here...\",\n  \"maxSentences\": 3\n}" }
+          }
+        },
+        {
+          "name": "Tags Generator",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/ai/tags-generator",
+            "body": { "mode": "raw", "raw": "{\n  \"content\": \"Article content to tag...\"\n}" }
+          }
+        },
+        {
+          "name": "Recommendations",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/ai/recommendations",
+            "body": { "mode": "raw", "raw": "{\n  \"limit\": 5\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Chat",
+      "item": [
+        {
+          "name": "Create Chat",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/chats",
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"New Chat\"\n}" }
+          }
+        },
+        { "name": "List Chats", "request": { "method": "GET", "url": "{{baseUrl}}/chats" } },
+        { "name": "Get Chat Messages", "request": { "method": "GET", "url": "{{baseUrl}}/chats/{{chatId}}/messages" } },
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/chats/{{chatId}}/messages",
+            "body": { "mode": "raw", "raw": "{\n  \"content\": \"Hello, how are you?\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Uploads",
+      "item": [
+        {
+          "name": "Upload File",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/uploads",
+            "body": {
+              "mode": "formdata",
+              "formdata": [{ "key": "file", "type": "file", "src": [] }]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [{ "name": "Get Overview", "request": { "method": "GET", "url": "{{baseUrl}}/dashboard/overview" } }]
+    },
+    {
+      "name": "Health",
+      "item": [
+        { "name": "Health Check", "request": { "method": "GET", "url": "{{baseUrl}}/../../health" } },
+        { "name": "Readiness Check", "request": { "method": "GET", "url": "{{baseUrl}}/../../health/ready" } }
+      ]
+    }
+  ]
+}
