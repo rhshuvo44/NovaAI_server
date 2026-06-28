@@ -22,7 +22,7 @@
     "test:coverage": "jest --coverage --runInBand",
     "test:unit": "jest --testPathPattern=tests/unit --runInBand",
     "test:integration": "jest --testPathPattern=tests/integration --runInBand",
-    "docker:build": "docker build -t ai-workspace-backend .",
+    "docker:build": "docker build -t NovaAI-backend .",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
     "pm2:start": "pm2 start ecosystem.config.js",
