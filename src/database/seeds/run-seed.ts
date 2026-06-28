@@ -28,7 +28,7 @@ export async function seedRoles(): Promise<void> {
   logger.info(`Seeded ${ROLE_SEEDS.length} roles`);
 }
 
-ex async function runSeed(): Promise<void> {
+async function runSeed(): Promise<void> {
   logger.info('Starting database seed...');
   await connectDatabase();
 
