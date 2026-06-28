@@ -6,7 +6,7 @@ import { PERMISSION_SEEDS } from '@database/seeds/permission.seed';
 import { ROLE_SEEDS } from '@database/seeds/role.seed';
 import { logger } from '@utils/logger';
 
-export async function seedPermissions(): Promise<void> {
+async function seedPermissions(): Promise<void> {
   for (const seed of PERMISSION_SEEDS) {
     await PermissionModel.findOneAndUpdate(
       { key: seed.key },
@@ -17,7 +17,7 @@ export async function seedPermissions(): Promise<void> {
   logger.info(`Seeded ${PERMISSION_SEEDS.length} permissions`);
 }
 
-export async function seedRoles(): Promise<void> {
+async function seedRoles(): Promise<void> {
   for (const seed of ROLE_SEEDS) {
     await RoleModel.findOneAndUpdate(
       { name: seed.name },
@@ -28,7 +28,7 @@ export async function seedRoles(): Promise<void> {
   logger.info(`Seeded ${ROLE_SEEDS.length} roles`);
 }
 
-async function runSeed(): Promise<void> {
+ async function runSeed(): Promise<void> {
   logger.info('Starting database seed...');
   await connectDatabase();
 
