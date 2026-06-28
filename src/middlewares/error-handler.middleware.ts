@@ -19,10 +19,18 @@ function mapKnownHttpError(
   err: HttpErrorLike
 ): { statusCode: number; message: string; errorCode: string } | null {
   if (err.type === 'entity.too.large' || err.status === 413 || err.statusCode === 413) {
-    return { statusCode: 413, message: 'Request payload is too large', errorCode: 'PAYLOAD_TOO_LARGE' };
+    return {
+      statusCode: 413,
+      message: 'Request payload is too large',
+      errorCode: 'PAYLOAD_TOO_LARGE',
+    };
   }
   if (err.type === 'entity.parse.failed' || (err instanceof SyntaxError && 'body' in err)) {
-    return { statusCode: 400, message: 'Malformed JSON in request body', errorCode: 'MALFORMED_JSON' };
+    return {
+      statusCode: 400,
+      message: 'Malformed JSON in request body',
+      errorCode: 'MALFORMED_JSON',
+    };
   }
   return null;
 }
@@ -59,7 +67,12 @@ export function globalErrorHandler(
 
   const knownHttpError = mapKnownHttpError(err as HttpErrorLike);
   if (knownHttpError) {
-    ApiResponse.error(res, knownHttpError.message, knownHttpError.statusCode, knownHttpError.errorCode);
+    ApiResponse.error(
+      res,
+      knownHttpError.message,
+      knownHttpError.statusCode,
+      knownHttpError.errorCode
+    );
     return;
   }
 
