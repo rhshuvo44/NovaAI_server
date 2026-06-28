@@ -1,14 +1,23 @@
 import { createApp } from '@app';
+import { Permission, Role } from '@constants/index';
+import { RoleModel } from '@modules/roles/models/role.model';
 import request from 'supertest';
 import { createTestUser } from '../factories/user.factory';
 import { setupClerkMock, TEST_BEARER_TOKEN } from '../mocks/clerk.mock';
-
 jest.mock('@modules/auth/services/clerk-verification.service');
 
 const app = createApp();
 
 describe('Documents API', () => {
-
+  beforeEach(async () => {
+    await RoleModel.create({
+      name: Role.USER,
+      displayName: 'User',
+      description: 'test role',
+      permissions: [Permission.AI_USE, Permission.DOCUMENT_READ, Permission.DOCUMENT_WRITE],
+      isSystemRole: true,
+    });
+  });
   it('creates a document for the authenticated user', async () => {
     const user = await createTestUser();
     const { mockClerkSessionFor } = setupClerkMock();
