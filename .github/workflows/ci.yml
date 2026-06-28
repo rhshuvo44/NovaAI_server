@@ -115,6 +115,6 @@ jobs:
         with:
           context: .
           push: false
-          tags: NovaAI-backend:${{ github.sha }}
+          tags: nova-ai-backend:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
