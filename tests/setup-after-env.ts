@@ -34,8 +34,8 @@ import { redisManager } from '@config/database/redis';
 import { PermissionModel } from '@modules/permissions/models/permission.model';
 import { RoleModel } from '@modules/roles/models/role.model';
 
-import { seedPermissions } from '@database/seeds/permission.seed';
-import { seedRoles } from '@database/seeds/role.seed';
+import { PERMISSION_SEEDS } from '@database/seeds/permission.seed';
+import { ROLE_SEEDS } from '@database/seeds/role.seed';
 
 let mongoServer: MongoMemoryServer;
 
@@ -45,14 +45,14 @@ beforeAll(async () => {
   await mongoose.connect(mongoServer.getUri());
 
   // Seed RBAC once
-  await seedPermissions();
-  await seedRoles();
+  await PERMISSION_SEEDS();
+  await ROLE_SEEDS();
 });
 
 beforeEach(async () => {
   // Always start each test with valid RBAC data
-  await seedPermissions();
-  await seedRoles();
+  await PERMISSION_SEEDS();
+  await ROLE_SEEDS();
 });
 
 afterEach(async () => {
@@ -70,8 +70,8 @@ afterEach(async () => {
   await redisManager.client.flushdb();
 
   // Re-seed because permissions may have been cached
-  await seedPermissions();
-  await seedRoles();
+  await PERMISSION_SEEDS();
+  await ROLE_SEEDS();
 });
 
 afterAll(async () => {
