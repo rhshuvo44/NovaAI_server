@@ -19,7 +19,7 @@ function buildRedisOptions(): RedisOptions {
 
   if (env.REDIS_PASSWORD) options.password = env.REDIS_PASSWORD;
   if (env.REDIS_USERNAME) options.username = env.REDIS_USERNAME;
-  if (env.REDIS_TLS) options.tls = {};
+  // if (env.REDIS_TLS) options.tls = {};
 
   return options;
 }
