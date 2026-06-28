@@ -1,10 +1,10 @@
-import request from 'supertest';
 import { createApp } from '@app';
-import { createTestUser } from '../factories/user.factory';
-import { setupClerkMock, TEST_BEARER_TOKEN } from '../mocks/clerk.mock';
-import { mockAIProvider } from '../mocks/ai-provider.mock';
-import { Role, Permission } from '@constants/index';
+import { Role } from '@constants/index';
 import { RoleModel } from '@modules/roles/models/role.model';
+import request from 'supertest';
+import { createTestUser } from '../factories/user.factory';
+import { mockAIProvider } from '../mocks/ai-provider.mock';
+import { setupClerkMock, TEST_BEARER_TOKEN } from '../mocks/clerk.mock';
 
 jest.mock('@modules/auth/services/clerk-verification.service');
 jest.mock('@modules/ai/providers/provider.factory', () => ({
@@ -15,15 +15,15 @@ jest.mock('@modules/ai/providers/provider.factory', () => ({
 const app = createApp();
 
 describe('AI feature endpoints', () => {
-  beforeEach(async () => {
-    await RoleModel.create({
-      name: Role.USER,
-      displayName: 'User',
-      description: 'test role',
-      permissions: [Permission.AI_USE, Permission.DOCUMENT_READ, Permission.DOCUMENT_WRITE],
-      isSystemRole: true,
-    });
-  });
+  // beforeEach(async () => {
+  //   await RoleModel.create({
+  //     name: Role.USER,
+  //     displayName: 'User',
+  //     description: 'test role',
+  //     permissions: [Permission.AI_USE, Permission.DOCUMENT_READ, Permission.DOCUMENT_WRITE],
+  //     isSystemRole: true,
+  //   });
+  // });
 
   it('rejects requests without the AI_USE permission', async () => {
     await RoleModel.deleteMany({});

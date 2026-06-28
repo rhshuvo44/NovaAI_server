@@ -13,7 +13,12 @@ export const ROLE_SEEDS: RoleSeed[] = [
     name: Role.USER,
     displayName: 'User',
     description: 'Standard user with access to their own content and AI features',
-    permissions: [Permission.DOCUMENT_READ, Permission.DOCUMENT_WRITE, Permission.AI_USE],
+    permissions: [
+      Permission.DOCUMENT_READ,
+      Permission.DOCUMENT_WRITE,
+      Permission.AI_USE,
+      Permission.DOCUMENT_DELETE,
+    ],
     isSystemRole: true,
   },
   {
