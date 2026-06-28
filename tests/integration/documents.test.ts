@@ -6,14 +6,7 @@ import { setupClerkMock, TEST_BEARER_TOKEN } from '../mocks/clerk.mock';
 jest.mock('@modules/auth/services/clerk-verification.service');
 
 const app = createApp();
-import { RoleModel } from '@modules/roles/models/role.model';
-import { Role } from '@constants';
 
-const role = await RoleModel.findOne({
-    name: Role.USER
-});
-
-console.log(role);
 describe('Documents API', () => {
   it('creates a document for the authenticated user', async () => {
     const user = await createTestUser();
