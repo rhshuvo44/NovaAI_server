@@ -11,15 +11,15 @@ const app = createApp();
 describe('Documents API', () => {
   beforeEach(async () => {
     await RoleModel.create({
-      name: Role.MANAGER,
-      displayName: 'Manager',
+      name: Role.USER,
+      displayName: 'User',
       description: 'test role',
-      permissions: [Permission.AI_USE, Permission.DOCUMENT_READ, Permission.DOCUMENT_WRITE],
+      permissions: [Permission.AI_USE, Permission.DOCUMENT_READ, Permission.DOCUMENT_WRITE,Permission.DOCUMENT_DELETE],
       isSystemRole: true,
     });
   });
   it('creates a document for the authenticated user', async () => {
-    const user = await createTestUser({ role: Role.MANAGER });
+    const user = await createTestUser({ role: Role.USER });
     const { mockClerkSessionFor } = setupClerkMock();
     mockClerkSessionFor(user);
 
