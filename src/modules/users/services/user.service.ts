@@ -97,7 +97,11 @@ export class UserService {
       this.permissionsCacheKey(userId),
       async () => {
         const roleDoc = await roleRepository.findByName(role);
-        return roleDoc?.permissions ?? [];
+        if (!roleDoc) {
+          throw new Error(`Role '${role}' not found during test`);
+        }
+
+        return roleDoc.permissions;
       },
       CACHE_TTL.SESSION
     );
