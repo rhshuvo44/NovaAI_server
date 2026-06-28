@@ -8,11 +8,18 @@ jest.mock('@modules/auth/services/clerk-verification.service');
 const app = createApp();
 
 describe('Documents API', () => {
+  
   it('creates a document for the authenticated user', async () => {
     const user = await createTestUser();
+
     const { mockClerkSessionFor } = setupClerkMock();
     mockClerkSessionFor(user);
+const permissions = await user.getPermissionsForUser(
+    user._id.toString(),
+    user.role
+);
 
+console.log(permissions);
     const res = await request(app)
       .post('/api/v1/documents')
       .set('Authorization', `Bearer ${TEST_BEARER_TOKEN}`)
