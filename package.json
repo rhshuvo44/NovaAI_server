@@ -8,7 +8,8 @@
   },
   "scripts": {
     "build": "rimraf dist && tsc",
-    "start": "TS_NODE_BASE_URL=./dist node -r tsconfig-paths/register dist/server.js",
+    "start": "node -r module-alias/register dist/server.js",
+    "vercel-build": "tsc",
     "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/server.ts",
     "seed": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts",
     "seed:prod": "node -r tsconfig-paths/register dist/database/seeds/run-seed.js",
@@ -58,6 +59,7 @@
     "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^4.1.0",
+    "module-alias": "^2.3.4",
     "mongoose": "^8.24.1",
     "morgan": "^1.11.0",
     "multer": "^2.2.0",
@@ -102,5 +104,24 @@
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3"
+  },"_moduleAliases": {
+    "@": "dist",
+    "@app": "dist/app.js",
+    "@config": "dist/config",
+    "@modules": "dist/modules",
+    "@shared": "dist/shared",
+    "@middlewares": "dist/middlewares",
+    "@utils": "dist/utils",
+    "@helpers": "dist/helpers",
+    "@constants": "dist/constants",
+    "@types-internal": "dist/types",
+    "@interfaces": "dist/interfaces",
+    "@validators": "dist/validators",
+    "@events": "dist/events",
+    "@jobs": "dist/jobs",
+    "@queues": "dist/queues",
+    "@emails": "dist/emails",
+    "@routes": "dist/routes",
+    "@database": "dist/database"
   }
 }
