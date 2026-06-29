@@ -7,9 +7,9 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "build": "rimraf dist && tsc",
+    "build": "rimraf dist && tsc && tsc-alias",
     "start": "node -r module-alias/register dist/server.js",
-    "vercel-build": "tsc",
+    "vercel-build": "tsc && tsc-alias",
     "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/server.ts",
     "seed": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts",
     "seed:prod": "node -r tsconfig-paths/register dist/database/seeds/run-seed.js",
@@ -70,6 +70,7 @@
     "svix": "^1.96.1",
     "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1",
+    "tsc-alias": "^1.8.17",
     "uuid": "^14.0.1",
     "winston": "^3.19.0",
     "zod": "^4.4.3"
@@ -104,7 +105,8 @@
     "tsconfig-paths": "^4.2.0",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3"
-  },"_moduleAliases": {
+  },
+  "_moduleAliases": {
     "@": "dist",
     "@app": "dist/app.js",
     "@config": "dist/config",
