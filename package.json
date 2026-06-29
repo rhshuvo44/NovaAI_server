@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "rimraf dist && tsc",
-    "start": "node -r tsconfig-paths/register dist/server.js",
+    "start": "TS_NODE_BASE_URL=./dist node -r tsconfig-paths/register dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/server.ts",
     "seed": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts",
     "seed:prod": "node -r tsconfig-paths/register dist/database/seeds/run-seed.js",
