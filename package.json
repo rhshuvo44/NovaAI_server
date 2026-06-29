@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "rimraf dist && tsc && tsc-alias",
-    "start": "node -r module-alias/register dist/server.js",
+    "start": "node dist/server.js",
     "vercel-build": "tsc && tsc-alias",
     "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/server.ts",
     "seed": "ts-node -r tsconfig-paths/register src/database/seeds/run-seed.ts",
