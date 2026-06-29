@@ -14,17 +14,8 @@ afterEach(async () => {
   // Clear all collections between tests for isolation, without tearing
   // down and re-establishing the connection (which is slow).
   const collections = mongoose.connection.collections;
-  // await Promise.all(Object.values(collections).map((collection) => collection.deleteMany({})));
- for (const collection of Object.values(collections)) {
-    if (
-      collection.collectionName === 'roles' ||
-      collection.collectionName === 'permissions'
-    ) {
-      continue;
-    }
+  await Promise.all(Object.values(collections).map((collection) => collection.deleteMany({})));
 
-    await collection.deleteMany({});
-  }
   // Flush the Redis test DB between tests as well.
   await redisManager.client.flushdb();
 });
