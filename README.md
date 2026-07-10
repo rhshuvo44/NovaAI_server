@@ -1,6 +1,6 @@
-# AI Workspace Backend
+# NovaAI Backend
 
-Enterprise-grade, production-ready Express.js + TypeScript backend for **AI Workspace**, an AI-powered SaaS platform. Built with a feature-based MVC architecture, full Redis integration, dual AI provider support (OpenAI/Gemini), Clerk authentication with RBAC, and a complete background job system.
+Enterprise-grade, production-ready Express.js + TypeScript backend for **NovaAI**, an AI-powered SaaS platform. Built with a feature-based MVC architecture, full Redis integration, dual AI provider support (OpenAI/Gemini), Clerk authentication with RBAC, and a complete background job system.
 
 ## Tech Stack
 
