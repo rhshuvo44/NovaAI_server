@@ -84,6 +84,10 @@ class RedisManager {
   public getBullMQConnectionOptions(): RedisOptions {
     return buildRedisOptions();
   }
+
+  public getBullClient(): Redis {
+  return this.bullClient;
+}
 }
 
 export const redisManager = RedisManager.getInstance();

@@ -28,7 +28,7 @@ export function createNotificationWorker(): Worker<NotificationJobPayload> {
         notification: notification.toJSON(),
       });
     },
-    { connection: redisManager.getBullMQConnectionOptions(), concurrency: 10 }
+    { connection: redisManager.getBullClient() as any, concurrency: 10 }
   );
 
   worker.on('completed', (job) => {

@@ -22,7 +22,7 @@ export function createAIProcessingWorker(): Worker<AIProcessingJobPayload> {
   const worker = new Worker<AIProcessingJobPayload>(
     QueueName.AI_PROCESSING,
     async (job: Job<AIProcessingJobPayload>) => processJob(job.data),
-    { connection: redisManager.getBullMQConnectionOptions(), concurrency: 3 }
+    { connection: redisManager.getBullClient() as unknown as any, concurrency: 3 }
   );
 
   worker.on('completed', (job) => {

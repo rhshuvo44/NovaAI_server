@@ -3,7 +3,8 @@ import { redisManager } from '@config/database/redis';
 import { QueueName } from '@constants/index';
 
 const defaultQueueOptions: QueueOptions = {
-  connection: redisManager.getBullMQConnectionOptions(),
+  // cast to any to avoid ioredis type mismatches between installed versions
+  connection: redisManager.getBullClient() as any,
   defaultJobOptions: {
     attempts: 3,
     backoff: { type: 'exponential', delay: 2000 },

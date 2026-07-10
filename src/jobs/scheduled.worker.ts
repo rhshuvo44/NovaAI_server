@@ -29,7 +29,7 @@ export function createScheduledWorker(): Worker<ScheduledJobPayload> {
   const worker = new Worker<ScheduledJobPayload>(
     QueueName.SCHEDULED,
     async (job: Job<ScheduledJobPayload>) => processScheduledJob(job.data),
-    { connection: redisManager.getBullMQConnectionOptions(), concurrency: 2 }
+    { connection: redisManager.getBullClient() as any, concurrency: 2 }
   );
 
   worker.on('completed', (job) => {

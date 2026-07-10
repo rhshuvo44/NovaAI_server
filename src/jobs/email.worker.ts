@@ -12,7 +12,7 @@ export function createEmailWorker(): Worker<EmailJobPayload> {
     async (job: Job<EmailJobPayload>) => {
       await emailService.send(job.data);
     },
-    { connection: redisManager.getBullMQConnectionOptions(), concurrency: 5 }
+    { connection: redisManager.getBullClient() as any, concurrency: 5 }
   );
 
   worker.on('completed', (job) => {
