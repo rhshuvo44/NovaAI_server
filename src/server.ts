@@ -1,4 +1,3 @@
-import 'tsconfig-paths/register';
 import 'module-alias/register';
 import http from 'http';
 import { createApp } from '@app';
