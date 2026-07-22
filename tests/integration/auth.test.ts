@@ -1,47 +1,64 @@
 import request from 'supertest';
 import { createApp } from '@app';
-import { createTestUser } from '../factories/user.factory';
-import { setupClerkMock, TEST_BEARER_TOKEN } from '../mocks/clerk.mock';
-
-jest.mock('@modules/auth/services/clerk-verification.service');
-jest.mock('@config/clerk', () => ({
-  clerkClient: {
-    users: {
-      getUser: jest.fn(),
-    },
-  },
-}));
+import { createTestUser, generateAccessTokenFor } from '../factories/user.factory';
 
 const app = createApp();
 
 describe('Auth API', () => {
-  describe('POST /api/v1/auth/session', () => {
-    it('returns 422 when sessionToken is missing', async () => {
-      const res = await request(app).post('/api/v1/auth/session').send({});
+  describe('POST /api/v1/auth/register', () => {
+    it('returns 422 when email is missing', async () => {
+      const res = await request(app).post('/api/v1/auth/register').send({ password: 'password123' });
       expect(res.status).toBe(422);
       expect(res.body.success).toBe(false);
     });
 
-    it('bootstraps a session for an existing user and returns tokens', async () => {
-      const user = await createTestUser();
-      const { mockClerkSessionFor } = setupClerkMock();
-      mockClerkSessionFor(user);
+    it('returns 422 when password is too short', async () => {
+      const res = await request(app).post('/api/v1/auth/register').send({ email: 'test@example.com', password: '123' });
+      expect(res.status).toBe(422);
+    });
 
-      const { clerkClient } = jest.requireMock('@config/clerk') as {
-        clerkClient: { users: { getUser: jest.Mock } };
-      };
-      clerkClient.users.getUser.mockResolvedValue({
-        id: user.clerkId,
-        emailAddresses: [{ id: 'email_1', emailAddress: user.email }],
-        primaryEmailAddressId: 'email_1',
-        firstName: user.firstName,
-        lastName: user.lastName,
-        imageUrl: user.avatarUrl,
-      });
+    it('registers a new user and returns tokens', async () => {
+      const res = await request(app)
+        .post('/api/v1/auth/register')
+        .send({ email: 'newuser@example.com', password: 'password123', firstName: 'New', lastName: 'User' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.user.email).toBe('newuser@example.com');
+      expect(typeof res.body.data.accessToken).toBe('string');
+      expect(typeof res.body.data.refreshToken).toBe('string');
+    });
+
+    it('returns 409 when email already exists', async () => {
+      await createTestUser({ email: 'existing@example.com' });
+      const res = await request(app)
+        .post('/api/v1/auth/register')
+        .send({ email: 'existing@example.com', password: 'password123' });
+
+      expect(res.status).toBe(409);
+    });
+  });
+
+  describe('POST /api/v1/auth/login', () => {
+    it('returns 422 when email is missing', async () => {
+      const res = await request(app).post('/api/v1/auth/login').send({ password: 'password123' });
+      expect(res.status).toBe(422);
+    });
+
+    it('returns 401 for invalid credentials', async () => {
+      const res = await request(app)
+        .post('/api/v1/auth/login')
+        .send({ email: 'nonexistent@example.com', password: 'wrongpass' });
+
+      expect(res.status).toBe(401);
+    });
+
+    it('logs in with valid credentials and returns tokens', async () => {
+      const user = await createTestUser({ email: 'login@example.com' });
 
       const res = await request(app)
-        .post('/api/v1/auth/session')
-        .send({ sessionToken: TEST_BEARER_TOKEN });
+        .post('/api/v1/auth/login')
+        .send({ email: 'login@example.com', password: 'password123' });
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
@@ -58,13 +75,12 @@ describe('Auth API', () => {
     });
 
     it('returns the authenticated user when a valid token is provided', async () => {
-      const user = await createTestUser();
-      const { mockClerkSessionFor } = setupClerkMock();
-      mockClerkSessionFor(user);
+      const user = await createTestUser({ email: 'me@example.com' });
+      const token = generateAccessTokenFor(user);
 
       const res = await request(app)
         .get('/api/v1/auth/me')
-        .set('Authorization', `Bearer ${TEST_BEARER_TOKEN}`);
+        .set('Authorization', `Bearer ${token}`);
 
       expect(res.status).toBe(200);
       expect(res.body.data.email).toBe(user.email);

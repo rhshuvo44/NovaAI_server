@@ -59,41 +59,18 @@ export enum AIFeature {
   RECOMMENDATION = 'recommendation',
 }
 
-export enum QueueName {
-  EMAIL = 'email-queue',
-  NOTIFICATION = 'notification-queue',
-  AI_PROCESSING = 'ai-processing-queue',
-  SCHEDULED = 'scheduled-queue',
-  DEAD_LETTER = 'dead-letter-queue',
-}
-
 export const CACHE_TTL = {
-  SHORT: 60, // 1 minute
-  MEDIUM: 60 * 15, // 15 minutes
-  LONG: 60 * 60, // 1 hour
-  DASHBOARD: 60 * 5, // 5 minutes
-  ANALYTICS: 60 * 30, // 30 minutes
-  SESSION: 60 * 60 * 24, // 24 hours
-  AI_RESPONSE: 60 * 60 * 6, // 6 hours
-  SEARCH: 60 * 10, // 10 minutes
-  OTP: 60 * 5, // 5 minutes
-  EMAIL_VERIFICATION: 60 * 60 * 24, // 24 hours
-  PASSWORD_RESET: 60 * 30, // 30 minutes
-} as const;
-
-export const REDIS_KEY_PREFIX = {
-  SESSION: 'session:',
-  CACHE: 'cache:',
-  RATE_LIMIT: 'rl:',
-  OTP: 'otp:',
-  EMAIL_VERIFY: 'email_verify:',
-  PASSWORD_RESET: 'password_reset:',
-  AI_RESPONSE: 'ai_response:',
-  SEARCH: 'search:',
-  LOCK: 'lock:',
-  IDEMPOTENCY: 'idempotency:',
-  DASHBOARD: 'dashboard:',
-  ANALYTICS: 'analytics:',
+  SHORT: 60,
+  MEDIUM: 60 * 15,
+  LONG: 60 * 60,
+  DASHBOARD: 60 * 5,
+  ANALYTICS: 60 * 30,
+  SESSION: 60 * 60 * 24,
+  AI_RESPONSE: 60 * 60 * 6,
+  SEARCH: 60 * 10,
+  OTP: 60 * 5,
+  EMAIL_VERIFICATION: 60 * 60 * 24,
+  PASSWORD_RESET: 60 * 30,
 } as const;
 
 export const PAGINATION_DEFAULTS = {

@@ -22,8 +22,7 @@
       "@interfaces/*": ["interfaces/*"],
       "@validators/*": ["validators/*"],
       "@events/*": ["events/*"],
-      "@jobs/*": ["jobs/*"],
-      "@queues/*": ["queues/*"],
+
       "@emails/*": ["emails/*"],
       "@routes/*": ["routes/*"],
       "@database/*": ["database/*"]

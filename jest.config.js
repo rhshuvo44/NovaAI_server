@@ -22,8 +22,7 @@ module.exports = {
     '^@interfaces/(.*)$': '<rootDir>/src/interfaces/$1',
     '^@validators/(.*)$': '<rootDir>/src/validators/$1',
     '^@events/(.*)$': '<rootDir>/src/events/$1',
-    '^@jobs/(.*)$': '<rootDir>/src/jobs/$1',
-    '^@queues/(.*)$': '<rootDir>/src/queues/$1',
+
     '^@emails/(.*)$': '<rootDir>/src/emails/$1',
     '^@routes/(.*)$': '<rootDir>/src/routes/$1',
     '^@database/(.*)$': '<rootDir>/src/database/$1',

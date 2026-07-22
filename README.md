@@ -1,6 +1,6 @@
 # NovaAI Backend
 
-Enterprise-grade, production-ready Express.js + TypeScript backend for **NovaAI**, an AI-powered SaaS platform. Built with a feature-based MVC architecture, full Redis integration, dual AI provider support (OpenAI/Gemini), Clerk authentication with RBAC, and a complete background job system.
+Enterprise-grade, production-ready Express.js + TypeScript backend for **NovaAI**, an AI-powered SaaS platform. Built with a feature-based MVC architecture with dual AI provider support (OpenAI/Gemini), JWT authentication with RBAC.
 
 ## Tech Stack
 
@@ -9,8 +9,7 @@ Enterprise-grade, production-ready Express.js + TypeScript backend for **NovaAI*
 | Runtime | Node.js 22+, TypeScript (strict mode) |
 | Framework | Express.js 5 |
 | Database | MongoDB (Mongoose) |
-| Cache / Queues / Pub-Sub | Redis (ioredis), BullMQ |
-| Auth | Clerk (session verification) + internal JWT refresh tokens |
+| Auth | JWT access/refresh tokens with rotation and replay detection |
 | AI | OpenAI & Google Gemini, behind a swappable provider interface |
 | Storage | Cloudinary (via Multer) |
 | Email | Resend (primary) with Nodemailer/SMTP fallback |
@@ -22,25 +21,24 @@ Enterprise-grade, production-ready Express.js + TypeScript backend for **NovaAI*
 
 ```
 src/
-  config/          # env, database (Mongo/Redis), Clerk, Cloudinary, Swagger
-  constants/        # roles, permissions, cache TTLs, queue names
-  middlewares/       # auth, RBAC, validation, rate-limit, sanitize, errors, upload
+  config/          # env, database (Mongo), Swagger
+  constants/       # roles, permissions, cache TTLs
+  middlewares/      # auth, RBAC, validation, rate-limit, sanitize, errors, upload
   modules/<feature>/
-    controllers/     # HTTP layer only - no business logic
-    services/        # business logic
-    repositories/    # all Mongoose queries
-    validators/      # express-validator chains
-    routes/          # route wiring + OpenAPI annotations
-    models/          # Mongoose schemas
+    controllers/    # HTTP layer only - no business logic
+    services/       # business logic
+    repositories/   # all Mongoose queries
+    validators/     # express-validator chains
+    routes/         # route wiring + OpenAPI annotations
+    models/         # Mongoose schemas
   shared/
-    errors/          # typed error hierarchy (BaseError -> ValidationError, etc.)
-    responses/       # standardized ApiResponse envelope
-    models/          # BaseRepository, base schema plugin
-    services/        # CacheService, locks, idempotency, pub/sub
-  queues/, jobs/      # BullMQ queue factory + workers (email, notifications, AI, scheduled)
-  emails/             # email service + HTML templates
-  database/seeds/     # Role/Permission seed data + runner
-  app.ts, server.ts   # Express app assembly + process bootstrap
+    errors/         # typed error hierarchy (BaseError -> ValidationError, etc.)
+    responses/      # standardized ApiResponse envelope
+    models/         # BaseRepository, base schema plugin
+    services/       # in-memory cache, MongoDB-backed lock/idempotency, EventEmitter pub/sub
+  emails/           # email service + HTML templates
+  database/seeds/   # Role/Permission seed data + runner
+  app.ts, server.ts # Express app assembly + process bootstrap
 ```
 
 19 feature modules: auth, users, roles, permissions, documents, categories, tags, favorites, notifications, chat, prompts, ai, uploads, analytics, dashboard, settings, audit-logs, api-keys, system-logs.
@@ -52,8 +50,7 @@ Every module follows: **Controller -> Service -> Repository**, with validation a
 ### Prerequisites
 - Node.js 22+
 - MongoDB (Atlas or local)
-- Redis 7+
-- Accounts/API keys for: Clerk, OpenAI and/or Gemini, Cloudinary, Resend (optional - SMTP fallback exists)
+- Accounts/API keys for: OpenAI and/or Gemini, Cloudinary, Resend (optional - SMTP fallback exists)
 
 ### Setup
 
@@ -61,10 +58,10 @@ Every module follows: **Controller -> Service -> Repository**, with validation a
 npm install
 cp .env.example .env   # fill in real credentials
 npm run seed            # seeds default Roles + Permissions (required for RBAC to work)
-npm run dev              # starts the dev server with hot reload
+npm run dev             # starts the dev server with hot reload
 ```
 
-The app **boots without real credentials** (every env var has a safe placeholder default), but Clerk auth, AI features, uploads, and email sending will fail until real keys are provided.
+The app **boots without real credentials** (every env var has a safe placeholder default), but auth, AI features, uploads, and email sending will fail until real keys are provided.
 
 ### Available Scripts
 
@@ -84,41 +81,71 @@ The app **boots without real credentials** (every env var has a safe placeholder
 ### Docker Compose (full local stack)
 
 ```bash
-docker-compose up -d          # app + MongoDB + Redis
+docker-compose up -d          # app + MongoDB
 docker-compose --profile tools up -d   # also starts mongo-express admin UI on :8081
 ```
 
+## Seed Data
+
+The `npm run seed` command seeds default system roles, permissions, and test users into the database using `upsert` — it is safe to re-run at any time.
+
+### Permissions (11 total)
+
+| Key | Display Name | Description | Category |
+|-----|-------------|-------------|----------|
+| `user:read` | View Users | View user accounts and profiles | users |
+| `user:write` | Manage Users | Edit user accounts, roles, and status | users |
+| `user:delete` | Delete Users | Permanently remove user accounts | users |
+| `document:read` | View Documents | View documents | documents |
+| `document:write` | Manage Documents | Create and edit documents | documents |
+| `document:delete` | Delete Documents | Delete documents | documents |
+| `role:manage` | Manage Roles | Create, edit, and delete roles | rbac |
+| `permission:manage` | Manage Permissions | Assign permissions to roles | rbac |
+| `settings:manage` | Manage Settings | Modify system-wide settings | settings |
+| `analytics:read` | View Analytics | View usage analytics and reports | analytics |
+| `audit:read` | View Audit Logs | View the audit trail | audit |
+| `ai:use` | Use AI Features | Use AI chat, generation, and other features | ai |
+| `ai:manage` | Manage AI Settings | Configure AI provider settings and view usage | ai |
+
+### Roles (4 system roles)
+
+| Role | Description | Permissions |
+|------|-------------|-------------|
+| `user` | Standard user with access to their own content and AI features | `document:read`, `document:write`, `document:delete`, `ai:use` |
+| `manager` | Can view team analytics and manage documents across the workspace | `document:read`, `document:write`, `document:delete`, `ai:use`, `analytics:read`, `user:read` |
+| `admin` | Full administrative access except RBAC management | All except `role:manage`, `permission:manage` |
+| `super_admin` | Unrestricted access, including RBAC role and permission management | All 13 permissions |
+
+### Default users (3)
+
+| Email | Role | Password Source |
+|-------|------|-----------------|
+| `admin@novaai.com` | Super Admin | `ADMIN_PASSWORD` env var |
+| `manager@novaai.com` | Manager | `MANAGER_PASSWORD` env var |
+| `user@novaai.com` | User | `USER_PASSWORD` env var |
+
+All seed users have `isEmailVerified: true`.
+
 ## Authentication Flow
 
-1. Frontend authenticates the user with Clerk directly (sign-up/sign-in widgets).
-2. Frontend calls `POST /api/v1/auth/session` with the Clerk session token.
-3. Backend verifies the token against Clerk, provisions/loads the local `User` record, and returns an internal **access token** (15m) + **refresh token** (7d).
+1. User registers via `POST /api/v1/auth/register` with email + password.
+2. Backend hashes the password (bcrypt, 12 rounds), creates a `User` record, and returns an **access token** (15m) + **refresh token** (7d).
+3. User logs in via `POST /api/v1/auth/login` with email + password — backend verifies the hash and returns a new token pair.
 4. Subsequent requests use `Authorization: Bearer <accessToken>`.
-5. `POST /api/v1/auth/refresh` rotates the refresh token (old one is revoked on use).
-6. Clerk webhooks (`POST /api/v1/webhooks/clerk`) keep the local `User` record in sync with `user.created` / `user.updated` / `user.deleted` events -- configure this URL in the Clerk dashboard.
+5. `POST /api/v1/auth/refresh` rotates the refresh token (old one is revoked on use — replay resistant).
+6. `POST /api/v1/auth/logout` revokes the refresh token.
+7. `POST /api/v1/auth/logout-all` revokes all refresh tokens for the user.
 
-RBAC is enforced via `requireAuth` + `requirePermissions(...)` / `requireRole(...)` / `requireOwnershipOrPermission(...)` middleware, checking against permissions resolved from the user's `Role` document (cached in Redis, invalidated on role change).
+RBAC is enforced via `requireAuth` + `requirePermissions(...)` / `requireRole(...)` / `requireOwnershipOrPermission(...)` middleware, checking against permissions resolved from the user's `Role` document.
 
 ## AI Provider Abstraction
 
 All AI features (`chat`, `content-generator`, `prompt-optimizer`, `summarizer`, `tags-generator`, `recommendations`) call through `AICoreService`, which:
 - Delegates to whichever provider implements `AIProvider` (`OpenAIProvider` or `GeminiProvider`), selected by `AI_PROVIDER` env var.
-- Caches identical prompts in Redis (`CACHE_TTL.AI_RESPONSE`, default 6h).
+- Caches identical prompts in-memory (TTL-based, default 6h).
 - Records every call (tokens, latency, cache hit/miss, success/failure) to the `AIUsage` collection for billing/analytics.
 
 To add a new provider: implement `AIProvider` in `src/modules/ai/providers/`, register it in `provider.factory.ts`. No other code changes needed.
-
-## Redis Usage Map
-
-| Purpose | Service |
-|---|---|
-| General caching, getOrSet | `CacheService` |
-| OTP / email verification / password reset tokens | `TokenCacheService` |
-| Distributed locks | `DistributedLockService` |
-| Idempotency keys | `IdempotencyService` |
-| Pub/Sub (real-time notification delivery) | `PubSubService` |
-| Rate limiting | `rate-limit-redis` store, per-route limiters |
-| Job queues | BullMQ (email, notifications, AI processing, scheduled, dead-letter) |
 
 ## Testing
 
@@ -129,9 +156,7 @@ npm run test:integration # integration (Supertest) tests only
 npm run test:coverage    # with coverage report
 ```
 
-Tests use `mongodb-memory-server` (downloads a real MongoDB binary on first run -- requires outbound network access to `fastdl.mongodb.org`) and connect to a real local/CI Redis instance. **This was verified in development**: all Redis-backed unit tests (cache, distributed locks, idempotency, pub/sub) and the BullMQ queue integration tests were run against a live Redis instance and pass. MongoDB-backed tests are written and type-check cleanly but could not be executed in the sandbox used to build this project, since that sandbox's network policy blocks the MongoDB binary CDN -- they will run normally in any standard dev machine or CI runner (this is one of the most common Node.js testing setups and does not require Docker or a real MongoDB server to be installed).
-
-One real bug was caught by this test suite during development and fixed: the global error handler didn't recognize body-parser's `PayloadTooLargeError`, causing oversized requests to return 500 instead of 413. Covered now by `tests/integration/security.test.ts`.
+Tests use `mongodb-memory-server` (downloads a real MongoDB binary on first run -- requires outbound network access to `fastdl.mongodb.org`).
 
 ## Deployment
 
@@ -145,4 +170,4 @@ Once running, Swagger UI is available at `GET /api-docs` and the raw OpenAPI spe
 
 - `GET /health` -- basic liveness/info
 - `GET /health/live` -- Kubernetes liveness probe target
-- `GET /health/ready` -- Kubernetes readiness probe target (checks Mongo + Redis connectivity)
+- `GET /health/ready` -- Kubernetes readiness probe target (checks MongoDB connectivity)

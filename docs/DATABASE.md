@@ -9,7 +9,7 @@ MongoDB via Mongoose. All collections share these conventions (applied by `apply
 
 | Collection | Key fields | Indexes | Notes |
 |---|---|---|---|
-| **users** | `clerkId` (unique), `email` (unique), `role`, `isActive` | `email+deletedAt`, `role+isActive`, `createdAt` | Synced from Clerk via webhook + session bootstrap |
+| **users** | `email` (unique), `passwordHash`, `role`, `isActive` | `email+deletedAt`, `role+isActive`, `createdAt` | Registered via `POST /auth/register` |
 | **roles** | `name` (unique enum), `permissions[]`, `isSystemRole` | -- | Seeded; system roles cannot be deleted |
 | **permissions** | `key` (unique enum), `category` | `category` | Read-mostly catalog, seeded |
 | **refreshtokens** | `userId`, `tokenHash` (unique), `expiresAt` | TTL index on `expiresAt`, `userId+revokedAt` | Hard-deleted via MongoDB TTL, not soft-deleted |
@@ -26,7 +26,10 @@ MongoDB via Mongoose. All collections share these conventions (applied by `apply
 | **analyticsevents** | `userId?`, `eventName`, `category`, `properties` | `category+createdAt`, `userId+createdAt` | Not soft-deleted; auto-tracked for every API request via `trackRequest` middleware |
 | **auditlogs** | `actorId`, `action` (enum), `resourceType`, `resourceId`, `changes` | `resourceType+resourceId+createdAt` | Not soft-deleted; written by `AuditLogService.record()` |
 | **apikeys** | `ownerId`, `keyHash` (unique), `keyPrefix`, `scopes[]`, `isActive`, `expiresAt` | `keyPrefix` | Raw key shown only once at creation; only the SHA-256 hash is stored |
-| **settings** | `scope` (system/user), `ownerId?`, `key`, `value` (Mixed) | `scope+ownerId+key` (unique compound) | System settings cached in Redis; user settings read live |
+| **locks** | `resource`, `instanceId`, `expiresAt` | unique on `resource` | Distributed locking via MongoDB upsert + TTL |
+| **idempotencyrecords** | `key` (unique), `response`, `expiresAt` | TTL index on `expiresAt`, unique on `key` | Idempotency keys for safe retry of mutating operations |
+| **settings** | `scope` (system/user), `ownerId?`, `key`, `value` (Mixed) | `scope+ownerId+key` (unique compound) | System settings cached in-memory; user settings read live |
+| **tokenstores** | `key` (unique), `value`, `expiresAt` | TTL index on `expiresAt`, unique on `key` | Generic TTL-based token/OTP store — replaces Redis for short-lived data |
 | **systemlogs** | `level`, `source`, `message`, `context` | `level+createdAt`, TTL on `createdAt` (30 days) | Auto-purged; written by scheduled jobs and infra-level events |
 
 ## Relationships

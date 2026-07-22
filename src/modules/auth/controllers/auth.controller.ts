@@ -11,9 +11,20 @@ function getRequestMeta(req: Request): { ipAddress?: string; userAgent?: string 
   };
 }
 
-export const bootstrapSession = asyncHandler(async (req: Request, res: Response) => {
-  const { sessionToken } = req.body as { sessionToken: string };
-  const result = await authService.bootstrapSession(sessionToken, getRequestMeta(req));
+export const register = asyncHandler(async (req: Request, res: Response) => {
+  const { email, password, firstName, lastName } = req.body as {
+    email: string;
+    password: string;
+    firstName?: string;
+    lastName?: string;
+  };
+  const result = await authService.register(
+    email,
+    password,
+    firstName,
+    lastName,
+    getRequestMeta(req)
+  );
 
   ApiResponse.success(
     res,
@@ -22,7 +33,22 @@ export const bootstrapSession = asyncHandler(async (req: Request, res: Response)
       accessToken: result.accessToken,
       refreshToken: result.refreshToken,
     },
-    'Session established successfully'
+    'Registration successful'
+  );
+});
+
+export const login = asyncHandler(async (req: Request, res: Response) => {
+  const { email, password } = req.body as { email: string; password: string };
+  const result = await authService.login(email, password, getRequestMeta(req));
+
+  ApiResponse.success(
+    res,
+    {
+      user: result.user,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
+    },
+    'Login successful'
   );
 });
 

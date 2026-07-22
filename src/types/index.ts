@@ -2,11 +2,9 @@ import { Role, Permission } from '@constants/index';
 
 export interface AuthenticatedUser {
   userId: string;
-  clerkId: string;
   email: string;
   role: Role;
   permissions: Permission[];
-  sessionId?: string;
 }
 
 declare global {

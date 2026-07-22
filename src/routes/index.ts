@@ -1,6 +1,5 @@
 import { Router } from 'express';
 import authRoutes from '@modules/auth/routes/auth.routes';
-import webhookRoutes from '@modules/auth/routes/webhook.routes';
 import userRoutes from '@modules/users/routes/user.routes';
 import roleRoutes from '@modules/roles/routes/role.routes';
 import permissionRoutes from '@modules/permissions/routes/permission.routes';
@@ -22,7 +21,6 @@ import apiKeyRoutes from '@modules/api-keys/routes/api-key.routes';
 const router = Router();
 
 router.use('/auth', authRoutes);
-router.use('/webhooks', webhookRoutes);
 router.use('/users', userRoutes);
 router.use('/roles', roleRoutes);
 router.use('/permissions', permissionRoutes);

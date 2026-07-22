@@ -12,7 +12,6 @@ import { AuthenticatedUser } from '@types-internal/index';
 function buildMockUser(overrides: Partial<AuthenticatedUser> = {}): AuthenticatedUser {
   return {
     userId: 'user-1',
-    clerkId: 'clerk-1',
     email: 'test@example.com',
     role: Role.USER,
     permissions: [],

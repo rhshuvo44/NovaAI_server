@@ -5,7 +5,6 @@ import { Role } from '@constants/index';
 describe('JwtService', () => {
   const payload = {
     userId: '507f1f77bcf86cd799439011',
-    clerkId: 'clerk_123',
     email: 'test@example.com',
     role: Role.USER,
   };

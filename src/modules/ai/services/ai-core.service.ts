@@ -8,7 +8,7 @@ import {
 } from '@modules/ai/interfaces/ai-provider.interface';
 import { cacheService } from '@shared/services/cache.service';
 import { aiUsageRepository } from '@modules/ai/repositories/ai-usage.repository';
-import { REDIS_KEY_PREFIX, CACHE_TTL, AIFeature } from '@constants/index';
+import { CACHE_TTL, AIFeature } from '@constants/index';
 import { aiLogger } from '@utils/logger';
 
 export interface TrackedCompletionOptions {
@@ -20,7 +20,7 @@ export interface TrackedCompletionOptions {
 export class AICoreService {
   private buildCacheKey(messages: AIMessage[], feature: AIFeature): string {
     const hash = crypto.createHash('sha256').update(JSON.stringify(messages)).digest('hex');
-    return `${REDIS_KEY_PREFIX.AI_RESPONSE}${feature}:${hash}`;
+    return `ai:${feature}:${hash}`;
   }
 
   /**

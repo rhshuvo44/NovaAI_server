@@ -8,7 +8,13 @@ import {
   notificationEmailTemplate,
 } from '@emails/templates';
 import { logger } from '@utils/logger';
-import { EmailJobPayload } from '@queues/job-payloads';
+
+export interface SendEmailInput {
+  to: string;
+  template: 'verification' | 'password-reset' | 'welcome' | 'notification';
+  subject?: string;
+  variables: Record<string, string>;
+}
 
 const TEMPLATE_MAP = {
   verification: verificationEmailTemplate,
@@ -31,7 +37,7 @@ export class EmailService {
     });
   }
 
-  async send(payload: EmailJobPayload): Promise<void> {
+  async send(payload: SendEmailInput): Promise<void> {
     const renderer = TEMPLATE_MAP[payload.template];
     const { subject, html } = renderer(payload.variables);
     const finalSubject = payload.subject || subject;

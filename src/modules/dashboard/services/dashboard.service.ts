@@ -4,7 +4,7 @@ import { notificationRepository } from '@modules/notifications/repositories/noti
 import { aiUsageRepository } from '@modules/ai/repositories/ai-usage.repository';
 import { promptRepository } from '@modules/prompts/repositories/prompt.repository';
 import { cacheService } from '@shared/services/cache.service';
-import { REDIS_KEY_PREFIX, CACHE_TTL } from '@constants/index';
+import { CACHE_TTL } from '@constants/index';
 
 export interface DashboardOverview {
   documentCount: number;
@@ -17,7 +17,7 @@ export interface DashboardOverview {
 
 export class DashboardService {
   private overviewCacheKey(userId: string): string {
-    return `${REDIS_KEY_PREFIX.DASHBOARD}overview:${userId}`;
+    return `dashboard:overview:${userId}`;
   }
 
   async getOverview(userId: string): Promise<DashboardOverview> {

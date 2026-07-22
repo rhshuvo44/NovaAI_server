@@ -2,9 +2,7 @@ import { createApp } from '@app';
 import { Permission, Role } from '@constants/index';
 import { RoleModel } from '@modules/roles/models/role.model';
 import request from 'supertest';
-import { createTestUser } from '../factories/user.factory';
-import { setupClerkMock, TEST_BEARER_TOKEN } from '../mocks/clerk.mock';
-jest.mock('@modules/auth/services/clerk-verification.service');
+import { createTestUser, generateAccessTokenFor } from '../factories/user.factory';
 
 const app = createApp();
 
@@ -14,18 +12,18 @@ describe('Documents API', () => {
       name: Role.USER,
       displayName: 'User',
       description: 'test role',
-      permissions: [Permission.AI_USE, Permission.DOCUMENT_READ, Permission.DOCUMENT_WRITE,Permission.DOCUMENT_DELETE],
+      permissions: [Permission.AI_USE, Permission.DOCUMENT_READ, Permission.DOCUMENT_WRITE, Permission.DOCUMENT_DELETE],
       isSystemRole: true,
     });
   });
+
   it('creates a document for the authenticated user', async () => {
     const user = await createTestUser({ role: Role.USER });
-    const { mockClerkSessionFor } = setupClerkMock();
-    mockClerkSessionFor(user);
+    const token = generateAccessTokenFor(user);
 
     const res = await request(app)
       .post('/api/v1/documents')
-      .set('Authorization', `Bearer ${TEST_BEARER_TOKEN}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ title: 'My First Doc', content: 'Hello world' });
 
     expect(res.status).toBe(201);
@@ -35,12 +33,11 @@ describe('Documents API', () => {
 
   it('rejects document creation with missing required fields', async () => {
     const user = await createTestUser();
-    const { mockClerkSessionFor } = setupClerkMock();
-    mockClerkSessionFor(user);
+    const token = generateAccessTokenFor(user);
 
     const res = await request(app)
       .post('/api/v1/documents')
-      .set('Authorization', `Bearer ${TEST_BEARER_TOKEN}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ title: '' });
 
     expect(res.status).toBe(422);
@@ -49,20 +46,19 @@ describe('Documents API', () => {
   it('prevents a user from updating another user\'s document', async () => {
     const owner = await createTestUser();
     const intruder = await createTestUser();
-    const { mockClerkSessionFor } = setupClerkMock();
+    const ownerToken = generateAccessTokenFor(owner);
 
-    mockClerkSessionFor(owner);
     const createRes = await request(app)
       .post('/api/v1/documents')
-      .set('Authorization', `Bearer ${TEST_BEARER_TOKEN}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
       .send({ title: 'Owned Doc', content: 'Secret content' });
 
     const docId = createRes.body.data._id;
 
-    mockClerkSessionFor(intruder);
+    const intruderToken = generateAccessTokenFor(intruder);
     const updateRes = await request(app)
       .patch(`/api/v1/documents/${docId}`)
-      .set('Authorization', `Bearer ${TEST_BEARER_TOKEN}`)
+      .set('Authorization', `Bearer ${intruderToken}`)
       .send({ title: 'Hijacked Title' });
 
     expect(updateRes.status).toBe(403);
@@ -70,12 +66,11 @@ describe('Documents API', () => {
 
   it('allows anyone to view a public document without authentication', async () => {
     const owner = await createTestUser();
-    const { mockClerkSessionFor } = setupClerkMock();
-    mockClerkSessionFor(owner);
+    const token = generateAccessTokenFor(owner);
 
     const createRes = await request(app)
       .post('/api/v1/documents')
-      .set('Authorization', `Bearer ${TEST_BEARER_TOKEN}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ title: 'Public Doc', content: 'Visible to all', isPublic: true });
 
     const docId = createRes.body.data._id;
@@ -87,12 +82,11 @@ describe('Documents API', () => {
 
   it('denies viewing a private document without authentication', async () => {
     const owner = await createTestUser();
-    const { mockClerkSessionFor } = setupClerkMock();
-    mockClerkSessionFor(owner);
+    const token = generateAccessTokenFor(owner);
 
     const createRes = await request(app)
       .post('/api/v1/documents')
-      .set('Authorization', `Bearer ${TEST_BEARER_TOKEN}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ title: 'Private Doc', content: 'Secret', isPublic: false });
 
     const docId = createRes.body.data._id;
@@ -103,24 +97,23 @@ describe('Documents API', () => {
 
   it('soft-deletes a document so it no longer appears in the owner\'s list', async () => {
     const owner = await createTestUser();
-    const { mockClerkSessionFor } = setupClerkMock();
-    mockClerkSessionFor(owner);
+    const token = generateAccessTokenFor(owner);
 
     const createRes = await request(app)
       .post('/api/v1/documents')
-      .set('Authorization', `Bearer ${TEST_BEARER_TOKEN}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ title: 'To Delete', content: 'Bye' });
 
     const docId = createRes.body.data._id;
 
     const deleteRes = await request(app)
       .delete(`/api/v1/documents/${docId}`)
-      .set('Authorization', `Bearer ${TEST_BEARER_TOKEN}`);
+      .set('Authorization', `Bearer ${token}`);
     expect(deleteRes.status).toBe(200);
 
     const listRes = await request(app)
       .get('/api/v1/documents')
-      .set('Authorization', `Bearer ${TEST_BEARER_TOKEN}`);
+      .set('Authorization', `Bearer ${token}`);
 
     const titles = listRes.body.data.map((d: { title: string }) => d.title);
     expect(titles).not.toContain('To Delete');

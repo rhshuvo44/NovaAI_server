@@ -1,12 +1,10 @@
 import request from 'supertest';
 import { createApp } from '@app';
-import { createTestUser } from '../factories/user.factory';
-import { setupClerkMock, TEST_BEARER_TOKEN } from '../mocks/clerk.mock';
+import { createTestUser, generateAccessTokenFor } from '../factories/user.factory';
 import { mockAIProvider } from '../mocks/ai-provider.mock';
 import { Role, Permission } from '@constants/index';
 import { RoleModel } from '@modules/roles/models/role.model';
 
-jest.mock('@modules/auth/services/clerk-verification.service');
 jest.mock('@modules/ai/providers/provider.factory', () => ({
   getAIProvider: () => require('../mocks/ai-provider.mock').mockAIProvider,
   getAIProviderByName: () => require('../mocks/ai-provider.mock').mockAIProvider,
@@ -36,12 +34,11 @@ describe('AI feature endpoints', () => {
     });
 
     const user = await createTestUser({ role: Role.USER });
-    const { mockClerkSessionFor } = setupClerkMock();
-    mockClerkSessionFor(user);
+    const token = generateAccessTokenFor(user);
 
     const res = await request(app)
       .post('/api/v1/ai/summarizer')
-      .set('Authorization', `Bearer ${TEST_BEARER_TOKEN}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ text: 'Some long text to summarize.' });
 
     expect(res.status).toBe(403);
@@ -50,12 +47,11 @@ describe('AI feature endpoints', () => {
   it('summarizes text using the (mocked) AI provider', async () => {
     mockAIProvider.nextResponse = 'This is a mock summary.';
     const user = await createTestUser({ role: Role.USER });
-    const { mockClerkSessionFor } = setupClerkMock();
-    mockClerkSessionFor(user);
+    const token = generateAccessTokenFor(user);
 
     const res = await request(app)
       .post('/api/v1/ai/summarizer')
-      .set('Authorization', `Bearer ${TEST_BEARER_TOKEN}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ text: 'Some long text to summarize.' });
 
     expect(res.status).toBe(200);
@@ -64,12 +60,11 @@ describe('AI feature endpoints', () => {
 
   it('rejects an empty prompt for the optimizer', async () => {
     const user = await createTestUser({ role: Role.USER });
-    const { mockClerkSessionFor } = setupClerkMock();
-    mockClerkSessionFor(user);
+    const token = generateAccessTokenFor(user);
 
     const res = await request(app)
       .post('/api/v1/ai/prompt-optimizer')
-      .set('Authorization', `Bearer ${TEST_BEARER_TOKEN}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ prompt: '' });
 
     expect(res.status).toBe(422);
@@ -78,12 +73,11 @@ describe('AI feature endpoints', () => {
   it('generates tags as a parsed array from the AI JSON response', async () => {
     mockAIProvider.nextResponse = '["productivity", "ai", "workspace"]';
     const user = await createTestUser({ role: Role.USER });
-    const { mockClerkSessionFor } = setupClerkMock();
-    mockClerkSessionFor(user);
+    const token = generateAccessTokenFor(user);
 
     const res = await request(app)
       .post('/api/v1/ai/tags-generator')
-      .set('Authorization', `Bearer ${TEST_BEARER_TOKEN}`)
+      .set('Authorization', `Bearer ${token}`)
       .send({ content: 'An article about productivity tools.' });
 
     expect(res.status).toBe(200);

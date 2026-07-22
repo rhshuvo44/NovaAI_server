@@ -70,12 +70,6 @@ export class DatabaseError extends BaseError {
   }
 }
 
-export class RedisError extends BaseError {
-  constructor(message = 'Cache operation failed') {
-    super(message, 500, 'REDIS_ERROR', true);
-  }
-}
-
 export class AIError extends BaseError {
   constructor(message = 'AI provider request failed') {
     super(message, 502, 'AI_ERROR', true);

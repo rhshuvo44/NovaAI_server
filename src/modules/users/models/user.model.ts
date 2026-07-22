@@ -4,8 +4,8 @@ import { applyBasePlugin, baseSchemaOptions } from '@shared/models/base.plugin';
 
 export interface IUser extends Document {
   _id: Types.ObjectId;
-  clerkId: string;
   email: string;
+  passwordHash: string;
   firstName?: string;
   lastName?: string;
   avatarUrl?: string;
@@ -22,7 +22,6 @@ export interface IUser extends Document {
 
 const userSchema = new Schema<IUser>(
   {
-    clerkId: { type: String, required: true, unique: true, index: true },
     email: {
       type: String,
       required: true,
@@ -32,6 +31,7 @@ const userSchema = new Schema<IUser>(
       index: true,
       match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email format'],
     },
+    passwordHash: { type: String, required: true },
     firstName: { type: String, trim: true, maxlength: 100 },
     lastName: { type: String, trim: true, maxlength: 100 },
     avatarUrl: { type: String, trim: true },

@@ -1,11 +1,18 @@
 import { body } from 'express-validator';
 
-export const bootstrapSessionValidator = [
-  body('sessionToken')
+export const registerValidator = [
+  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('password')
     .isString()
-    .withMessage('sessionToken must be a string')
-    .notEmpty()
-    .withMessage('sessionToken is required'),
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters'),
+  body('firstName').optional().isString().trim().isLength({ max: 100 }),
+  body('lastName').optional().isString().trim().isLength({ max: 100 }),
+];
+
+export const loginValidator = [
+  body('email').isEmail().withMessage('Valid email is required').normalizeEmail(),
+  body('password').isString().notEmpty().withMessage('Password is required'),
 ];
 
 export const refreshTokenValidator = [

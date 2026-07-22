@@ -1,8 +1,24 @@
 import crypto from 'crypto';
-import { redisClient } from '@config/database/redis';
-import { REDIS_KEY_PREFIX, CACHE_TTL } from '@constants/index';
-import { logger } from '@utils/logger';
-import { RedisError } from '@shared/errors';
+import { Schema, model, Document, Types } from 'mongoose';
+
+interface ITokenStore extends Document {
+  _id: Types.ObjectId;
+  type: 'otp' | 'email_verify' | 'password_reset';
+  identifier: string;
+  token: string;
+  payload?: string;
+  expiresAt: Date;
+}
+
+const tokenStoreSchema = new Schema<ITokenStore>({
+  type: { type: String, required: true, index: true },
+  identifier: { type: String, required: true },
+  token: { type: String, required: true, index: true },
+  payload: { type: String },
+  expiresAt: { type: Date, required: true, index: { expireAfterSeconds: 0 } },
+});
+
+const TokenStoreModel = model<ITokenStore>('TokenStore', tokenStoreSchema);
 
 export class TokenCacheService {
   private generateOtp(length = 6): string {
@@ -20,57 +36,68 @@ export class TokenCacheService {
 
   async createOtp(identifier: string): Promise<string> {
     const otp = this.generateOtp();
-    const key = `${REDIS_KEY_PREFIX.OTP}${identifier}`;
-    try {
-      await redisClient.set(key, otp, 'EX', CACHE_TTL.OTP);
-      return otp;
-    } catch (error) {
-      logger.error('Failed to create OTP', { identifier, error: (error as Error).message });
-      throw new RedisError('Failed to generate OTP');
-    }
+    const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    await TokenStoreModel.create({
+      type: 'otp',
+      identifier,
+      token: otp,
+      expiresAt,
+    });
+    return otp;
   }
 
   async verifyOtp(identifier: string, otp: string): Promise<boolean> {
-    const key = `${REDIS_KEY_PREFIX.OTP}${identifier}`;
-    try {
-      const stored = await redisClient.get(key);
-      if (!stored || stored !== otp) return false;
-      await redisClient.del(key); // one-time use
-      return true;
-    } catch (error) {
-      logger.error('Failed to verify OTP', { identifier, error: (error as Error).message });
-      return false;
-    }
+    const doc = await TokenStoreModel.findOneAndDelete({
+      type: 'otp',
+      identifier,
+      token: otp,
+      expiresAt: { $gt: new Date() },
+    });
+    return doc !== null;
   }
 
   async createEmailVerificationToken(userId: string): Promise<string> {
     const token = this.generateSecureToken();
-    const key = `${REDIS_KEY_PREFIX.EMAIL_VERIFY}${token}`;
-    await redisClient.set(key, userId, 'EX', CACHE_TTL.EMAIL_VERIFICATION);
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await TokenStoreModel.create({
+      type: 'email_verify',
+      identifier: userId,
+      token,
+      payload: userId,
+      expiresAt,
+    });
     return token;
   }
 
   async consumeEmailVerificationToken(token: string): Promise<string | null> {
-    const key = `${REDIS_KEY_PREFIX.EMAIL_VERIFY}${token}`;
-    const userId = await redisClient.get(key);
-    if (!userId) return null;
-    await redisClient.del(key);
-    return userId;
+    const doc = await TokenStoreModel.findOneAndDelete({
+      type: 'email_verify',
+      token,
+      expiresAt: { $gt: new Date() },
+    });
+    return doc?.payload ?? null;
   }
 
   async createPasswordResetToken(userId: string): Promise<string> {
     const token = this.generateSecureToken();
-    const key = `${REDIS_KEY_PREFIX.PASSWORD_RESET}${token}`;
-    await redisClient.set(key, userId, 'EX', CACHE_TTL.PASSWORD_RESET);
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+    await TokenStoreModel.create({
+      type: 'password_reset',
+      identifier: userId,
+      token,
+      payload: userId,
+      expiresAt,
+    });
     return token;
   }
 
   async consumePasswordResetToken(token: string): Promise<string | null> {
-    const key = `${REDIS_KEY_PREFIX.PASSWORD_RESET}${token}`;
-    const userId = await redisClient.get(key);
-    if (!userId) return null;
-    await redisClient.del(key);
-    return userId;
+    const doc = await TokenStoreModel.findOneAndDelete({
+      type: 'password_reset',
+      token,
+      expiresAt: { $gt: new Date() },
+    });
+    return doc?.payload ?? null;
   }
 }
 

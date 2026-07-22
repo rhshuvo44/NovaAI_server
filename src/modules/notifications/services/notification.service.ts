@@ -1,8 +1,7 @@
+import { Types } from 'mongoose';
 import { notificationRepository } from '@modules/notifications/repositories/notification.repository';
 import { INotification } from '@modules/notifications/models/notification.model';
 import { NotificationType } from '@constants/index';
-import { notificationQueue } from '@queues/queue.factory';
-import { NotificationJobPayload } from '@queues/job-payloads';
 import { NotFoundError, AuthorizationError } from '@shared/errors';
 import { PaginationQuery } from '@types-internal/index';
 import { PaginatedResult } from '@shared/models/base.repository';
@@ -17,21 +16,15 @@ export interface SendNotificationInput {
 }
 
 export class NotificationService {
-  /**
-   * Enqueues a notification for async creation + real-time pub/sub delivery
-   * rather than writing directly, so notification bursts (e.g. bulk admin
-   * announcements) don't block the request thread.
-   */
   async send(input: SendNotificationInput): Promise<void> {
-    const payload: NotificationJobPayload = {
-      userId: input.userId,
+    await notificationRepository.create({
+      userId: new Types.ObjectId(input.userId),
       type: input.type ?? NotificationType.INFO,
       title: input.title,
       message: input.message,
       link: input.link,
       metadata: input.metadata,
-    };
-    await notificationQueue.add('send-notification', payload);
+    });
   }
 
   async list(userId: string, pagination: PaginationQuery): Promise<PaginatedResult<INotification>> {

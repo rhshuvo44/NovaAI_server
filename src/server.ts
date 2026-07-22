@@ -3,9 +3,6 @@ import http from 'http';
 import { createApp } from '@app';
 import { env } from '@config/env';
 import { connectDatabase, disconnectDatabase } from '@config/database/mongoose';
-import { redisManager } from '@config/database/redis';
-import { startWorkers, stopWorkers } from '@jobs/index';
-import { closeAllQueues } from '@queues/queue.factory';
 import { logger } from '@utils/logger';
 
 let server: http.Server;
@@ -13,19 +10,6 @@ let server: http.Server;
 async function bootstrap(): Promise<void> {
   await connectDatabase();
   logger.info('MongoDB connection established');
-
-  // Redis connections are established eagerly (lazyConnect: false), but we
-  // confirm readiness here before accepting traffic.
-  await new Promise<void>((resolve) => {
-    if (redisManager.isConnected()) {
-      resolve();
-      return;
-    }
-    redisManager.client.once('ready', () => resolve());
-  });
-  logger.info('Redis connection established');
-
-  await startWorkers();
 
   const app = createApp();
   server = http.createServer(app);
@@ -52,9 +36,6 @@ async function gracefulShutdown(signal: string): Promise<void> {
       logger.info('HTTP server closed');
     }
 
-    await stopWorkers();
-    await closeAllQueues();
-    await redisManager.disconnectAll();
     await disconnectDatabase();
 
     clearTimeout(forceExitTimer);

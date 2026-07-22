@@ -3,7 +3,7 @@ import { documentRepository } from '@modules/documents/repositories/document.rep
 import { IDocument } from '@modules/documents/models/document.model';
 import { AuthorizationError } from '@shared/errors';
 import { cacheService } from '@shared/services/cache.service';
-import { REDIS_KEY_PREFIX, CACHE_TTL } from '@constants/index';
+import { CACHE_TTL } from '@constants/index';
 import { PaginationQuery, SearchQuery } from '@types-internal/index';
 import { PaginatedResult } from '@shared/models/base.repository';
 
@@ -17,7 +17,7 @@ export interface CreateDocumentInput {
 
 export class DocumentService {
   private listCacheKey(ownerId: string, page: number, limit: number): string {
-    return `${REDIS_KEY_PREFIX.CACHE}documents:${ownerId}:${page}:${limit}`;
+    return `documents:${ownerId}:${page}:${limit}`;
   }
 
   async create(ownerId: string, input: CreateDocumentInput): Promise<IDocument> {
@@ -29,7 +29,7 @@ export class DocumentService {
       tags: (input.tags ?? []).map((t) => new Types.ObjectId(t)),
       isPublic: input.isPublic ?? false,
     });
-    await cacheService.invalidatePattern(`${REDIS_KEY_PREFIX.CACHE}documents:${ownerId}:*`);
+    await cacheService.invalidatePattern(`documents:${ownerId}:*`);
     return doc;
   }
 
@@ -47,7 +47,7 @@ export class DocumentService {
 
   async search(ownerId: string, query: SearchQuery): Promise<IDocument[]> {
     if (!query.q) return [];
-    const key = `${REDIS_KEY_PREFIX.SEARCH}documents:${ownerId}:${query.q}`;
+    const key = `search:documents:${ownerId}:${query.q}`;
     return cacheService.getOrSet(
       key,
       () => documentRepository.search(ownerId, query.q!),
@@ -79,7 +79,7 @@ export class DocumentService {
       $inc: { version: 1 },
     });
 
-    await cacheService.invalidatePattern(`${REDIS_KEY_PREFIX.CACHE}documents:${ownerId}:*`);
+    await cacheService.invalidatePattern(`documents:${ownerId}:*`);
     return updated;
   }
 
@@ -93,7 +93,7 @@ export class DocumentService {
     const doc = await documentRepository.findByIdOrThrow(id);
     this.assertOwnership(doc, ownerId);
     const updated = await documentRepository.updateByIdOrThrow(id, { isArchived: true });
-    await cacheService.invalidatePattern(`${REDIS_KEY_PREFIX.CACHE}documents:${ownerId}:*`);
+    await cacheService.invalidatePattern(`documents:${ownerId}:*`);
     return updated;
   }
 
@@ -101,12 +101,12 @@ export class DocumentService {
     const doc = await documentRepository.findByIdOrThrow(id);
     this.assertOwnership(doc, ownerId);
     await documentRepository.deleteById(id);
-    await cacheService.invalidatePattern(`${REDIS_KEY_PREFIX.CACHE}documents:${ownerId}:*`);
+    await cacheService.invalidatePattern(`documents:${ownerId}:*`);
   }
 
   async bulkDelete(ids: string[], ownerId: string): Promise<number> {
     const count = await documentRepository.bulkDelete(ids);
-    await cacheService.invalidatePattern(`${REDIS_KEY_PREFIX.CACHE}documents:${ownerId}:*`);
+    await cacheService.invalidatePattern(`documents:${ownerId}:*`);
     return count;
   }
 }

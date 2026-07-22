@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyClerkSessionToken } from '@modules/auth/services/clerk-verification.service';
+import { jwtService } from '@modules/auth/services/jwt.service';
 import { userService } from '@modules/users/services/user.service';
 import { AuthenticationError } from '@shared/errors';
 import { AuthenticatedUser } from '@types-internal/index';
@@ -10,10 +10,6 @@ function extractBearerToken(req: Request): string | null {
   return header.slice('Bearer '.length).trim();
 }
 
-/**
- * Requires a valid Clerk session token. Attaches `req.user` populated with
- * the local user record's role and permissions for downstream RBAC checks.
- */
 export async function requireAuth(req: Request, _res: Response, next: NextFunction): Promise<void> {
   try {
     const token = extractBearerToken(req);
@@ -21,9 +17,9 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
       throw new AuthenticationError('Missing authentication token');
     }
 
-    const session = await verifyClerkSessionToken(token);
-    const user = await userService.getByClerkId(session.clerkUserId);
+    const payload = jwtService.verifyAccessToken(token);
 
+    const user = await userService.getById(payload.userId);
     if (!user.isActive) {
       throw new AuthenticationError('This account has been deactivated');
     }
@@ -32,11 +28,9 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
 
     const authenticatedUser: AuthenticatedUser = {
       userId: user._id.toString(),
-      clerkId: user.clerkId,
       email: user.email,
       role: user.role,
       permissions,
-      sessionId: session.sessionId,
     };
 
     req.user = authenticatedUser;
@@ -46,11 +40,6 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
   }
 }
 
-/**
- * Optional auth: attaches `req.user` if a valid token is present, but does
- * not reject the request if absent. Useful for endpoints with public +
- * personalized behavior (e.g. public documents that show "favorited" state).
- */
 export async function optionalAuth(
   req: Request,
   _res: Response,
@@ -63,24 +52,21 @@ export async function optionalAuth(
       return;
     }
 
-    const session = await verifyClerkSessionToken(token);
-    const user = await userService.getByClerkId(session.clerkUserId);
+    const payload = jwtService.verifyAccessToken(token);
+    const user = await userService.getById(payload.userId);
 
     if (user.isActive) {
       const permissions = await userService.getPermissionsForUser(user._id.toString(), user.role);
       req.user = {
         userId: user._id.toString(),
-        clerkId: user.clerkId,
         email: user.email,
         role: user.role,
         permissions,
-        sessionId: session.sessionId,
       };
     }
 
     next();
   } catch {
-    // optional auth: any failure simply means unauthenticated, not an error
     next();
   }
 }

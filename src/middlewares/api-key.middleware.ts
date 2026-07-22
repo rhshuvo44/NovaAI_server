@@ -23,7 +23,6 @@ export async function requireApiKey(
 
     const authenticatedUser: AuthenticatedUser = {
       userId: owner._id.toString(),
-      clerkId: owner.clerkId,
       email: owner.email,
       role: owner.role,
       permissions,

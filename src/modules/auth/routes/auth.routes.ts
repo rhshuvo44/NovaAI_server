@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import * as authController from '@modules/auth/controllers/auth.controller';
 import {
-  bootstrapSessionValidator,
+  registerValidator,
+  loginValidator,
   refreshTokenValidator,
   logoutValidator,
 } from '@modules/auth/validators/auth.validator';
@@ -12,17 +13,21 @@ const router = Router();
 
 /**
  * @openapi
- * /auth/session:
+ * /auth/register:
  *   post:
  *     tags: [Auth]
- *     summary: Bootstrap an API session from a verified Clerk session token
+ *     summary: Register a new user account
  */
-router.post(
-  '/session',
-  bootstrapSessionValidator,
-  handleValidationErrors,
-  authController.bootstrapSession
-);
+router.post('/register', registerValidator, handleValidationErrors, authController.register);
+
+/**
+ * @openapi
+ * /auth/login:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Login with email and password
+ */
+router.post('/login', loginValidator, handleValidationErrors, authController.login);
 
 /**
  * @openapi

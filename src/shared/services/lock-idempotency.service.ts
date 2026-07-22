@@ -1,61 +1,63 @@
 import crypto from 'crypto';
-import { redisClient } from '@config/database/redis';
-import { REDIS_KEY_PREFIX } from '@constants/index';
+import { Schema, model, Document, Types } from 'mongoose';
 import { logger } from '@utils/logger';
 import { IdempotencyError } from '@shared/errors';
 
-/**
- * Distributed lock implementation using Redis SET NX with a unique token,
- * released safely via a Lua script (compare-and-delete) to avoid releasing
- * a lock acquired by a different holder after expiry.
- */
-export class DistributedLockService {
-  private readonly releaseScript = `
-    if redis.call("get", KEYS[1]) == ARGV[1] then
-      return redis.call("del", KEYS[1])
-    else
-      return 0
-    end
-  `;
+interface ILock extends Document {
+  _id: Types.ObjectId;
+  resource: string;
+  token: string;
+  expiresAt: Date;
+}
 
+const lockSchema = new Schema<ILock>({
+  resource: { type: String, required: true, unique: true, index: true },
+  token: { type: String, required: true },
+  expiresAt: { type: Date, required: true, index: { expireAfterSeconds: 0 } },
+});
+
+const LockModel = model<ILock>('Lock', lockSchema);
+
+interface IIdempotencyRecord extends Document {
+  _id: Types.ObjectId;
+  key: string;
+  status: 'processing' | 'completed';
+  result?: string;
+  expiresAt: Date;
+}
+
+const idempotencySchema = new Schema<IIdempotencyRecord>({
+  key: { type: String, required: true, unique: true, index: true },
+  status: { type: String, required: true, enum: ['processing', 'completed'] },
+  result: { type: String },
+  expiresAt: { type: Date, required: true, index: { expireAfterSeconds: 0 } },
+});
+
+const IdempotencyModel = model<IIdempotencyRecord>('IdempotencyRecord', idempotencySchema);
+
+export class DistributedLockService {
   async acquire(resource: string, ttlMs = 10000): Promise<string | null> {
-    const key = `${REDIS_KEY_PREFIX.LOCK}${resource}`;
     const token = crypto.randomBytes(16).toString('hex');
+    const expiresAt = new Date(Date.now() + ttlMs);
 
     try {
-      const result = await redisClient.set(key, token, 'PX', ttlMs, 'NX');
-      return result === 'OK' ? token : null;
-    } catch (error) {
-      logger.error('Failed to acquire distributed lock', {
-        resource,
-        error: (error as Error).message,
-      });
+      await LockModel.create({ resource, token, expiresAt });
+      return token;
+    } catch (error: unknown) {
+      if ((error as { code?: number }).code === 11000) return null;
+      logger.error('Failed to acquire lock', { resource, error: (error as Error).message });
       return null;
     }
   }
 
   async release(resource: string, token: string): Promise<boolean> {
-    const key = `${REDIS_KEY_PREFIX.LOCK}${resource}`;
-    try {
-      const result = await redisClient.eval(this.releaseScript, 1, key, token);
-      return result === 1;
-    } catch (error) {
-      logger.error('Failed to release distributed lock', {
-        resource,
-        error: (error as Error).message,
-      });
-      return false;
-    }
+    const result = await LockModel.deleteOne({ resource, token });
+    return result.deletedCount > 0;
   }
 
-  /**
-   * Run a function while holding the lock; releases automatically afterward.
-   * Returns null if the lock could not be acquired.
-   */
   async withLock<T>(resource: string, ttlMs: number, fn: () => Promise<T>): Promise<T | null> {
     const token = await this.acquire(resource, ttlMs);
     if (!token) return null;
-
     try {
       return await fn();
     } finally {
@@ -64,40 +66,43 @@ export class DistributedLockService {
   }
 }
 
-/**
- * Idempotency service: ensures a request with a given idempotency key is
- * only processed once. Stores the response so repeated requests with the
- * same key return the original result instead of re-executing side effects.
- */
 export class IdempotencyService {
-  private readonly ttlSeconds = 60 * 60 * 24; // 24 hours
+  private readonly ttlSeconds = 60 * 60 * 24;
 
   async checkAndReserve(key: string): Promise<boolean> {
-    const redisKey = `${REDIS_KEY_PREFIX.IDEMPOTENCY}${key}`;
-    const result = await redisClient.set(redisKey, 'processing', 'EX', this.ttlSeconds, 'NX');
-    return result === 'OK';
+    try {
+      await IdempotencyModel.create({
+        key,
+        status: 'processing',
+        expiresAt: new Date(Date.now() + this.ttlSeconds * 1000),
+      });
+      return true;
+    } catch (error: unknown) {
+      if ((error as { code?: number }).code === 11000) return false;
+      throw error;
+    }
   }
 
   async storeResult<T>(key: string, result: T): Promise<void> {
-    const redisKey = `${REDIS_KEY_PREFIX.IDEMPOTENCY}${key}`;
-    await redisClient.set(redisKey, JSON.stringify(result), 'EX', this.ttlSeconds);
+    await IdempotencyModel.updateOne(
+      { key },
+      { status: 'completed', result: JSON.stringify(result) }
+    );
   }
 
   async getStoredResult<T>(key: string): Promise<T | null> {
-    const redisKey = `${REDIS_KEY_PREFIX.IDEMPOTENCY}${key}`;
-    const value = await redisClient.get(redisKey);
-    if (!value || value === 'processing') return null;
+    const doc = await IdempotencyModel.findOne({ key, status: 'completed' });
+    if (!doc?.result) return null;
     try {
-      return JSON.parse(value) as T;
+      return JSON.parse(doc.result) as T;
     } catch {
       return null;
     }
   }
 
   async isProcessing(key: string): Promise<boolean> {
-    const redisKey = `${REDIS_KEY_PREFIX.IDEMPOTENCY}${key}`;
-    const value = await redisClient.get(redisKey);
-    return value === 'processing';
+    const doc = await IdempotencyModel.findOne({ key, status: 'processing' });
+    return doc !== null;
   }
 }
 

@@ -6,7 +6,6 @@ import { Role } from '@constants/index';
 
 export interface AccessTokenPayload {
   userId: string;
-  clerkId: string;
   email: string;
   role: Role;
 }
@@ -18,7 +17,7 @@ export interface RefreshTokenPayload {
 
 export class JwtService {
   signAccessToken(payload: AccessTokenPayload): string {
-    return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
+    return jwt.sign({ ...payload }, env.JWT_ACCESS_SECRET, {
       expiresIn: env.JWT_ACCESS_EXPIRY,
       issuer: env.APP_NAME,
     } as jwt.SignOptions);

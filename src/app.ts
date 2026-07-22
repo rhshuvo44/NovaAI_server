@@ -14,7 +14,6 @@ import { globalErrorHandler, notFoundHandler } from '@middlewares/error-handler.
 import { sanitizeInput, xssProtection } from '@middlewares/sanitize.middleware';
 import { globalRateLimiter } from '@middlewares/rate-limit.middleware';
 import { trackRequest } from '@middlewares/analytics.middleware';
-import { captureRawBody } from '@middlewares/raw-body.middleware';
 import { logger } from '@utils/logger';
 
 export function createApp(): Application {
@@ -48,10 +47,6 @@ export function createApp(): Application {
       allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key', 'idempotency-key'],
     })
   );
-
-  // Webhook routes need the raw, unparsed body for signature verification,
-  // so this is registered before express.json() and only for that path.
-  app.use('/api/' + env.API_VERSION + '/webhooks', captureRawBody);
 
   app.use(express.json({ limit: '10mb' }));
   app.use(express.urlencoded({ extended: true, limit: '10mb' }));

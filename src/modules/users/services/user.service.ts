@@ -1,44 +1,38 @@
+import bcrypt from 'bcryptjs';
 import { userRepository } from '@modules/users/repositories/user.repository';
 import { roleRepository } from '@modules/roles/repositories/role.repository';
 import { IUser } from '@modules/users/models/user.model';
 import { Role, Permission } from '@constants/index';
 import { NotFoundError, ConflictError } from '@shared/errors';
-import { cacheService } from '@shared/services/cache.service';
-import { REDIS_KEY_PREFIX, CACHE_TTL } from '@constants/index';
+import { env } from '@config/env';
 import { PaginationQuery } from '@types-internal/index';
 import { PaginatedResult } from '@shared/models/base.repository';
+import { logger } from '@utils/logger';
 
-export interface CreateUserFromClerkInput {
-  clerkId: string;
+export interface RegisterUserInput {
   email: string;
+  password: string;
   firstName?: string;
   lastName?: string;
-  avatarUrl?: string;
 }
 
 export class UserService {
-  private permissionsCacheKey(userId: string): string {
-    return `${REDIS_KEY_PREFIX.SESSION}permissions:${userId}`;
-  }
-
-  async findOrCreateFromClerk(input: CreateUserFromClerkInput): Promise<IUser> {
-    const existing = await userRepository.findByClerkId(input.clerkId);
-    if (existing) return existing;
-
-    const existingByEmail = await userRepository.findByEmail(input.email);
-    if (existingByEmail) {
+  async register(input: RegisterUserInput): Promise<IUser> {
+    const existing = await userRepository.findByEmail(input.email);
+    if (existing) {
       throw new ConflictError('A user with this email already exists');
     }
 
+    const passwordHash = await bcrypt.hash(input.password, env.BCRYPT_SALT_ROUNDS);
+
     return userRepository.create({
-      clerkId: input.clerkId,
       email: input.email.toLowerCase().trim(),
+      passwordHash,
       firstName: input.firstName,
       lastName: input.lastName,
-      avatarUrl: input.avatarUrl,
       role: Role.USER,
       isActive: true,
-      isEmailVerified: true, // Clerk has already verified the email
+      isEmailVerified: false,
     });
   }
 
@@ -46,8 +40,8 @@ export class UserService {
     return userRepository.findByIdOrThrow(userId);
   }
 
-  async getByClerkId(clerkId: string): Promise<IUser> {
-    const user = await userRepository.findByClerkId(clerkId);
+  async getByEmail(email: string): Promise<IUser> {
+    const user = await userRepository.findByEmail(email);
     if (!user) throw new NotFoundError('User');
     return user;
   }
@@ -66,14 +60,12 @@ export class UserService {
   async changeRole(userId: string, role: Role): Promise<IUser> {
     const updated = await userRepository.updateById(userId, { role });
     if (!updated) throw new NotFoundError('User');
-    await cacheService.del(this.permissionsCacheKey(userId));
     return updated;
   }
 
   async deactivate(userId: string): Promise<IUser> {
     const updated = await userRepository.setActiveStatus(userId, false);
     if (!updated) throw new NotFoundError('User');
-    await cacheService.del(this.permissionsCacheKey(userId));
     return updated;
   }
 
@@ -88,23 +80,13 @@ export class UserService {
     if (!deleted) throw new NotFoundError('User');
   }
 
-  /**
-   * Resolves the effective permission set for a user's role, with Redis caching
-   * since this is checked on every protected request.
-   */
-  async getPermissionsForUser(userId: string, role: Role): Promise<Permission[]> {
-    return cacheService.getOrSet(
-      this.permissionsCacheKey(userId),
-      async () => {
-        const roleDoc = await roleRepository.findByName(role);
-        if (!roleDoc) {
-          throw new Error(`Role '${role}' not found during test`);
-        }
-
-        return roleDoc.permissions;
-      },
-      CACHE_TTL.SESSION
-    );
+  async getPermissionsForUser(_userId: string, role: Role): Promise<Permission[]> {
+    const roleDoc = await roleRepository.findByName(role);
+    if (!roleDoc) {
+      logger.warn(`Role '${role}' not found — returning empty permissions`);
+      return [];
+    }
+    return roleDoc.permissions;
   }
 }
 

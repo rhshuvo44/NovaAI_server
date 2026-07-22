@@ -1,7 +1,7 @@
 import { Types } from 'mongoose';
 import { analyticsRepository } from '@modules/analytics/repositories/analytics.repository';
 import { cacheService } from '@shared/services/cache.service';
-import { REDIS_KEY_PREFIX, CACHE_TTL } from '@constants/index';
+import { CACHE_TTL } from '@constants/index';
 
 export interface TrackEventInput {
   userId?: string;
@@ -40,7 +40,7 @@ export class AnalyticsService {
   }
 
   async getSummary(daysBack = 30): Promise<AnalyticsSummary> {
-    const cacheKey = `${REDIS_KEY_PREFIX.ANALYTICS}summary:${daysBack}`;
+    const cacheKey = `analytics:summary:${daysBack}`;
 
     return cacheService.getOrSet(
       cacheKey,

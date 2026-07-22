@@ -16,20 +16,6 @@ const envSchema = z.object({
   MONGODB_URI: z.string().default('mongodb://localhost:27017/ai-workspace'),
   MONGODB_URI_TEST: z.string().optional(),
 
-  // Redis
-  REDIS_HOST: z.string().default('localhost'),
-  REDIS_PORT: z.coerce.number().default(6379),
-  REDIS_PASSWORD: z.string().optional(),
-  REDIS_USERNAME: z.string().optional(),
-  REDIS_TLS: z.coerce.boolean().default(false),
-  REDIS_DB: z.coerce.number().default(0),
-
-  // Clerk
-  CLERK_SECRET_KEY: z.string().default('sk_test_placeholder'),
-  CLERK_PUBLISHABLE_KEY: z.string().default('pk_test_placeholder'),
-  CLERK_JWT_KEY: z.string().optional(),
-  CLERK_WEBHOOK_SECRET: z.string().default('whsec_placeholder'),
-
   // JWT (internal service tokens / refresh tokens)
   JWT_ACCESS_SECRET: z.string().default('dev_access_secret_change_me_minimum_32_chars'),
   JWT_REFRESH_SECRET: z.string().default('dev_refresh_secret_change_me_minimum_32_chars'),
@@ -66,6 +52,11 @@ const envSchema = z.object({
 
   // Bcrypt
   BCRYPT_SALT_ROUNDS: z.coerce.number().default(12),
+
+  // Seed user passwords (optional — seed falls back to defaults)
+  ADMIN_PASSWORD: z.string().default('Admin@123'),
+  MANAGER_PASSWORD: z.string().default('Manager@123'),
+  USER_PASSWORD: z.string().default('User@123'),
 
   // Cookies
   COOKIE_SECRET: z.string().default('dev_cookie_secret_change_me_in_prod_min_32'),

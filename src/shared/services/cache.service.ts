@@ -1,111 +1,93 @@
-import { redisClient } from '@config/database/redis';
-import { logger } from '@utils/logger';
-import { RedisError } from '@shared/errors';
 import { CACHE_TTL } from '@constants/index';
 
+interface CacheEntry<T> {
+  value: T;
+  expiresAt: number;
+}
+
 export class CacheService {
-  /**
-   * Get a cached value and parse it as JSON.
-   * Returns null if the key does not exist or on parse failure.
-   */
-  async get<T>(key: string): Promise<T | null> {
-    try {
-      const value = await redisClient.get(key);
-      if (!value) return null;
-      return JSON.parse(value) as T;
-    } catch (error) {
-      logger.error('Cache get failed', { key, error: (error as Error).message });
-      return null; // cache failures should never break the request flow
+  private store = new Map<string, CacheEntry<unknown>>();
+  private interval: ReturnType<typeof setInterval> | null = null;
+
+  constructor() {
+    this.interval = setInterval(() => this.evictExpired(), 60_000);
+    this.interval.unref();
+  }
+
+  private evictExpired(): void {
+    const now = Date.now();
+    for (const [key, entry] of this.store) {
+      if (entry.expiresAt <= now) {
+        this.store.delete(key);
+      }
     }
+  }
+
+  async get<T>(key: string): Promise<T | null> {
+    const entry = this.store.get(key) as CacheEntry<T> | undefined;
+    if (!entry) return null;
+    if (entry.expiresAt <= Date.now()) {
+      this.store.delete(key);
+      return null;
+    }
+    return entry.value;
   }
 
   async set<T>(key: string, value: T, ttlSeconds: number = CACHE_TTL.MEDIUM): Promise<void> {
-    try {
-      const serialized = JSON.stringify(value);
-      if (ttlSeconds > 0) {
-        await redisClient.set(key, serialized, 'EX', ttlSeconds);
-      } else {
-        await redisClient.set(key, serialized);
-      }
-    } catch (error) {
-      logger.error('Cache set failed', { key, error: (error as Error).message });
-      // do not throw - caching is a performance optimization, not a correctness requirement
-    }
+    this.store.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1000 });
   }
 
   async del(key: string | string[]): Promise<void> {
-    try {
-      const keys = Array.isArray(key) ? key : [key];
-      if (keys.length === 0) return;
-      await redisClient.del(...keys);
-    } catch (error) {
-      logger.error('Cache delete failed', { key, error: (error as Error).message });
+    const keys = Array.isArray(key) ? key : [key];
+    for (const k of keys) {
+      this.store.delete(k);
     }
   }
 
-  /**
-   * Invalidate all keys matching a glob pattern (e.g. "cache:documents:*").
-   * Uses SCAN instead of KEYS to avoid blocking Redis on large datasets.
-   */
   async invalidatePattern(pattern: string): Promise<number> {
-    let cursor = '0';
+    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
     let deletedCount = 0;
-
-    try {
-      do {
-        const [nextCursor, keys] = await redisClient.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
-        cursor = nextCursor;
-        if (keys.length > 0) {
-          await redisClient.del(...keys);
-          deletedCount += keys.length;
-        }
-      } while (cursor !== '0');
-      return deletedCount;
-    } catch (error) {
-      logger.error('Cache pattern invalidation failed', {
-        pattern,
-        error: (error as Error).message,
-      });
-      return deletedCount;
+    for (const key of this.store.keys()) {
+      if (regex.test(key)) {
+        this.store.delete(key);
+        deletedCount++;
+      }
     }
+    return deletedCount;
   }
 
   async exists(key: string): Promise<boolean> {
-    try {
-      const result = await redisClient.exists(key);
-      return result === 1;
-    } catch (error) {
-      logger.error('Cache exists check failed', { key, error: (error as Error).message });
+    const entry = this.store.get(key);
+    if (!entry) return false;
+    if (entry.expiresAt <= Date.now()) {
+      this.store.delete(key);
       return false;
     }
+    return true;
   }
 
   async ttl(key: string): Promise<number> {
-    try {
-      return await redisClient.ttl(key);
-    } catch (error) {
-      logger.error('Cache ttl check failed', { key, error: (error as Error).message });
+    const entry = this.store.get(key);
+    if (!entry) return -2;
+    const remaining = Math.floor((entry.expiresAt - Date.now()) / 1000);
+    if (remaining <= 0) {
+      this.store.delete(key);
       return -2;
     }
+    return remaining;
   }
 
   async increment(key: string, ttlSeconds?: number): Promise<number> {
-    try {
-      const value = await redisClient.incr(key);
-      if (ttlSeconds && value === 1) {
-        await redisClient.expire(key, ttlSeconds);
-      }
-      return value;
-    } catch (error) {
-      logger.error('Cache increment failed', { key, error: (error as Error).message });
-      throw new RedisError('Failed to increment cache key');
-    }
+    const entry = this.store.get(key) as CacheEntry<number> | undefined;
+    let value = entry?.value ?? 0;
+    value++;
+    const expiresAt = ttlSeconds
+      ? Date.now() + ttlSeconds * 1000
+      : (entry?.expiresAt ?? Date.now() + 86400000);
+    this.store.set(key, { value, expiresAt });
+    return value;
   }
 
-  /**
-   * Wrap-around helper: try cache first, fall back to the provided loader,
-   * then populate the cache with the loaded value.
-   */
   async getOrSet<T>(
     key: string,
     loader: () => Promise<T>,
@@ -113,7 +95,6 @@ export class CacheService {
   ): Promise<T> {
     const cached = await this.get<T>(key);
     if (cached !== null) return cached;
-
     const fresh = await loader();
     await this.set(key, fresh, ttlSeconds);
     return fresh;

@@ -1,15 +1,15 @@
+import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { userService } from '@modules/users/services/user.service';
+import { userRepository } from '@modules/users/repositories/user.repository';
 import { refreshTokenRepository } from '@modules/auth/repositories/refresh-token.repository';
 import { jwtService } from '@modules/auth/services/jwt.service';
-import { verifyClerkSessionToken } from '@modules/auth/services/clerk-verification.service';
-import { clerkClient } from '@config/clerk';
 import { AuthenticationError, NotFoundError } from '@shared/errors';
 import { env } from '@config/env';
 import { IUser } from '@modules/users/models/user.model';
 import { auditLogger } from '@utils/logger';
 
-export interface SessionBootstrapResult {
+export interface AuthResult {
   user: IUser;
   accessToken: string;
   refreshToken: string;
@@ -21,42 +21,42 @@ export interface RequestMetadata {
 }
 
 export class AuthService {
-  /**
-   * Called after the frontend authenticates with Clerk (sign-up/sign-in).
-   * Verifies the Clerk session token, provisions the local user record if
-   * this is their first time, and issues our own access/refresh token pair
-   * for subsequent API calls and service-to-service use.
-   */
-  async bootstrapSession(
-    clerkSessionToken: string,
+  async register(
+    email: string,
+    password: string,
+    firstName: string | undefined,
+    lastName: string | undefined,
     meta: RequestMetadata
-  ): Promise<SessionBootstrapResult> {
-    const session = await verifyClerkSessionToken(clerkSessionToken);
-
-    const clerkUser = await clerkClient.users.getUser(session.clerkUserId);
-    const primaryEmail =
-      clerkUser.emailAddresses.find((e) => e.id === clerkUser.primaryEmailAddressId)
-        ?.emailAddress ?? clerkUser.emailAddresses[0]?.emailAddress;
-
-    if (!primaryEmail) {
-      throw new AuthenticationError('Clerk account has no associated email address');
-    }
-
-    const user = await userService.findOrCreateFromClerk({
-      clerkId: session.clerkUserId,
-      email: primaryEmail,
-      firstName: clerkUser.firstName ?? undefined,
-      lastName: clerkUser.lastName ?? undefined,
-      avatarUrl: clerkUser.imageUrl,
-    });
-
-    await userService.activate(user._id.toString()).catch(() => undefined); // no-op if already active
+  ): Promise<AuthResult> {
+    const user = await userService.register({ email, password, firstName, lastName });
     const tokens = await this.issueTokenPair(user, meta);
 
-    auditLogger.info('User session bootstrapped', {
-      userId: user._id.toString(),
-      clerkId: user.clerkId,
-    });
+    auditLogger.info('User registered', { userId: user._id.toString(), email: user.email });
+
+    return { user, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
+  }
+
+  async login(email: string, password: string, meta: RequestMetadata): Promise<AuthResult> {
+    let user: IUser;
+    try {
+      user = await userService.getByEmail(email);
+    } catch {
+      throw new AuthenticationError('Invalid email or password');
+    }
+
+    if (!user.isActive) {
+      throw new AuthenticationError('This account has been deactivated');
+    }
+
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      throw new AuthenticationError('Invalid email or password');
+    }
+
+    await userRepository.markLoginNow(user._id.toString()).catch(() => undefined);
+    const tokens = await this.issueTokenPair(user, meta);
+
+    auditLogger.info('User logged in', { userId: user._id.toString(), email: user.email });
 
     return { user, accessToken: tokens.accessToken, refreshToken: tokens.refreshToken };
   }
@@ -67,7 +67,6 @@ export class AuthService {
   ): Promise<{ accessToken: string; refreshToken: string }> {
     const accessToken = jwtService.signAccessToken({
       userId: user._id.toString(),
-      clerkId: user.clerkId,
       email: user.email,
       role: user.role,
     });
@@ -106,10 +105,7 @@ export class AuthService {
    * stored hash, revokes it, and issues a fresh access/refresh pair.
    * Rotation prevents replay of a stolen refresh token after first use.
    */
-  async refreshSession(
-    refreshToken: string,
-    meta: RequestMetadata
-  ): Promise<SessionBootstrapResult> {
+  async refreshSession(refreshToken: string, meta: RequestMetadata): Promise<AuthResult> {
     const payload = jwtService.verifyRefreshToken(refreshToken);
     const tokenHash = jwtService.hashToken(refreshToken);
 
