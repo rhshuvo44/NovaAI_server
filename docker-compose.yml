@@ -12,12 +12,8 @@ services:
     environment:
       NODE_ENV: production
       MONGODB_URI: mongodb://mongodb:27017/ai-workspace
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
     depends_on:
       mongodb:
-        condition: service_healthy
-      redis:
         condition: service_healthy
     networks:
       - novaai-network
@@ -56,31 +52,6 @@ services:
         reservations:
           memory: 512M
 
-  redis:
-    image: redis:7-alpine
-    container_name: novaai-redis
-    restart: unless-stopped
-    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
-    expose:
-      - "6379"
-    volumes:
-      - redis-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
-    networks:
-      - novaai-network
-    logging: *default-logging
-    deploy:
-      resources:
-        limits:
-          memory: 512M
-        reservations:
-          memory: 128M
-
   mongo-express:
     image: mongo-express:1
     container_name: novaai-mongo-express
@@ -111,5 +82,4 @@ networks:
 
 volumes:
   mongodb-data:
-  redis-data:
   app-logs:

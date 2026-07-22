@@ -2,7 +2,7 @@
 
 ## Option A: Full Stack via Docker Compose (recommended)
 
-The root `docker-compose.yml` orchestrates the entire stack: nginx (reverse proxy), frontend (Next.js), backend (Express), MongoDB, and Redis.
+The root `docker-compose.yml` orchestrates the entire stack: nginx (reverse proxy), frontend (Next.js), backend (Express), and MongoDB.
 
 ### Prerequisites
 
@@ -29,7 +29,6 @@ This builds and starts:
 - **frontend** (Next.js) — not directly exposed, accessed through nginx
 - **backend** (Express) — not directly exposed, accessed through nginx
 - **mongodb** (MongoDB 7) — internal, with healthcheck
-- **redis** (Redis 7) — internal, with healthcheck
 
 ### First-run seeding
 
@@ -88,7 +87,7 @@ docker run -d \
   novaai-backend
 ```
 
-The image is a multi-stage build: dependencies are installed and compiled in `build` and `prod-deps` stages; the final `runtime` stage contains only production dependencies + compiled `dist/`, running as non-root user (`nodejs`, uid 1001) under `dumb-init` for correct signal forwarding. A `HEALTHCHECK` hits `/health` every 30s.
+The image is a multi-stage build: dependencies are installed and compiled in `build` and `prod-deps` stages; the final `runtime` stage contains only production dependencies + compiled `dist/`, running under `dumb-init` for correct signal forwarding. A `HEALTHCHECK` hits `/health` every 30s.
 
 ## Option C: Standalone Frontend Docker Image
 
@@ -143,10 +142,10 @@ npm run pm2:stop
                     │ :5000   │   │  :3000      │
                     └───┬────┘   └─────────────┘
                         │
-               ┌────────┼────────┐
-               ▼        ▼        ▼
-           MongoDB    Redis    Cloudinary
-                              (external)
+                ┌────────┼────────┐
+                ▼        ▼        ▼
+            MongoDB    Cloudinary    Redis
+                       (external)   (optional)
 ```
 
 ## Git Workflow
@@ -185,13 +184,13 @@ docker compose exec backend node -r tsconfig-paths/register dist/database/seeds/
 | backend | 512M | 256M |
 | frontend | — | — |
 | mongodb | 2G | 512M |
-| redis | 512M | 128M |
+
 
 ## Security
 
 - All containers (except nginx) are internal — not directly exposed to the host
 - nginx adds security headers (`X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`, `Permissions-Policy`)
-- Backend runs as non-root user with `dumb-init`
+- Backend runs under `dumb-init` for proper signal forwarding
 - Static assets get immutable cache headers (365 days)
 - File upload limit: 50MB (configurable in nginx config)
 - Logs are capped at 10MB per file, 3 rotated files per container
