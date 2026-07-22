@@ -21,7 +21,7 @@ RUN npm run build
 # ---- Production dependencies only ----
 FROM base AS prod-deps
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev && npm cache clean --force
 
 # ---- Runtime ----
 FROM base AS runtime
