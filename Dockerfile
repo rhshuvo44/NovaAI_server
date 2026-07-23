@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ---- Base ----
-FROM node:22-alpine3.18 AS base
+FROM node:22-alpine AS base
 WORKDIR /usr/src/app
 # ensure up-to-date packages and required certs, install dumb-init
 RUN apk update && apk upgrade --no-cache \
@@ -11,7 +11,7 @@ RUN apk update && apk upgrade --no-cache \
 # ---- Dependencies (full, for build) ----
 FROM base AS deps
 COPY package*.json ./
-RUN npm ci && npm audit fix --force || true
+RUN npm ci
 
 # ---- Build ----
 FROM base AS build
@@ -24,7 +24,7 @@ RUN npm run build
 # ---- Production dependencies only ----
 FROM base AS prod-deps
 COPY package*.json ./
-RUN npm ci --omit=dev && npm audit fix --force || true && npm cache clean --force
+RUN npm ci --omit=dev && npm cache clean --force
 
 # ---- Runtime ----
 FROM base AS runtime
