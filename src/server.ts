@@ -8,9 +8,6 @@ import { logger } from '@utils/logger';
 let server: http.Server;
 
 async function bootstrap(): Promise<void> {
-  await connectDatabase();
-  logger.info('MongoDB connection established');
-
   const app = createApp();
   server = http.createServer(app);
 
@@ -18,6 +15,14 @@ async function bootstrap(): Promise<void> {
     logger.info(`${env.APP_NAME} API listening on port ${env.PORT} [${env.NODE_ENV}]`);
     logger.info(`API docs available at ${env.APP_URL}/api-docs`);
   });
+
+  connectDatabase()
+    .then(() => logger.info('MongoDB connection established'))
+    .catch((err) => {
+      logger.error('MongoDB connection failed — server still running', {
+        error: (err as Error).message,
+      });
+    });
 }
 
 async function gracefulShutdown(signal: string): Promise<void> {
